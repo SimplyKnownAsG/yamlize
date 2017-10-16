@@ -31,19 +31,21 @@ class Attribute(object):
         the attribute must be supplied.
     """
 
+    __slots__ = ('name', 'key', 'type', 'default')
+
     def __init__(self, name, key=None, type=ANY, default=NODEFAULT):
         self.name = name
         self.key = key or name
         self.type = type
         self.default = default
 
-    def from_yaml(self, constructor, node):
+    def from_yaml(self, loader, node):
         from yamlize.yamlizable import Yamlizable # prevent recursive import
 
         if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
-            return self.type.from_yaml(constructor, node)
+            return self.type.from_yaml(loader, node)
 
-        value = constructor.construct_object(node, deep=True)
+        value = loader.construct_object(node, deep=True)
 
         if self.type is ANY or isinstance(value, self.type):
             return value
@@ -53,6 +55,28 @@ class Attribute(object):
             except:
                 raise YamlizingError('Failed to coerce value `{}` to type `{}`'
                                      .format(value, self.type), node)
+
+    def to_yaml(self, loader, data):
+        from yamlize.yamlizable import Yamlizable # prevent recursive import
+
+        if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
+            if not isinstance(data, self.type):
+                if data == self.default and data is not NODEFAULT:
+                    # short circuit, don't write it out
+                    return
+
+                # attempt to coerce
+                data = self.type(data)
+            return self.type.to_yaml(loader, data)
+
+        if self.type is not ANY and not isinstance(data, self.type):
+            try:
+                data = self.type(data) # to to coerce to correct type
+            except:
+                raise YamlizingError('Failed to coerce data `{}` to type `{}`'
+                                     .format(data, self.type))
+
+        return loader.represent_data(data)
 
 
 class AttributeCollection(object):
