@@ -142,7 +142,6 @@ class Test_two_way(unittest.TestCase):
         AnimalWithFriend.dump(poss, out_stream)
         self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
 
-    @unittest.skip("TODO: round trip of scalars not working")
     def test_list_animals_with_friends(self):
 
         @yamlizable(Attribute(name='name', type=str))

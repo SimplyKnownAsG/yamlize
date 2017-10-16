@@ -66,14 +66,14 @@ def _get_round_trip_data(node):
     return round_trip_data
 
 
-def _apply_round_trip_data(obj, node):
-    round_trip_data = getattr(obj, '_round_trip_data', None)
+def _apply_round_trip_data(round_trip_data, node):
+    if round_trip_data is None:
+        return
 
-    if round_trip_data is not None:
-        for key, val in round_trip_data.items():
-            if key == 'anchor':
-                val = AnchorNode(val)
-            setattr(node, key, val)
+    for key, val in round_trip_data.items():
+        if key == 'anchor':
+            val = AnchorNode(val)
+        setattr(node, key, val)
 
 
 class Object(Yamlizable):
@@ -91,6 +91,8 @@ class Object(Yamlizable):
         attrs = cls.attributes.by_key
         self = cls.__new__(cls)
         self._round_trip_data = _get_round_trip_data(node)
+        self._round_trip_scalar_data = {}
+        self._attribute_order = []
         loader.constructed_objects[node] = self
 
         # node.value is a ordered list of keys and values
@@ -101,7 +103,10 @@ class Object(Yamlizable):
             if attribute is None:
                 raise YamlizingError('Error parsing {}, found key `{}` but expected any of {}'
                                      .format(type(self), key, attrs.keys()), node)
+
             value = attribute.from_yaml(loader, val_node)
+            self._attribute_order.append(key)
+            self._round_trip_scalar_data[key] = (_get_round_trip_data(key_node), _get_round_trip_data(val_node))
             setattr(self, attribute.name, value)
 
         return self
@@ -119,19 +124,31 @@ class Object(Yamlizable):
         # items is a ordered list of keys and values
         items = []
         node = ruamel.yaml.MappingNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, items)
-        _apply_round_trip_data(self, node)
+        _apply_round_trip_data(getattr(self, '_round_trip_data', None), node)
         dumper.represented_objects[self] = node
 
-        for attr_name, attribute in cls.attributes.by_name.items():
+        attribute_order = getattr(self, '_attribute_order', [])
+        attribute_order += sorted(set(cls.attributes.by_name.keys()) - set(attribute_order))
+
+        round_trip_scalar_data = getattr(self, '_round_trip_scalar_data', {})
+
+        for attr_name in attribute_order:
+            attribute = cls.attributes.by_name[attr_name]
             attr_value = getattr(self, attr_name, attribute.default)
-            value_node = attribute.to_yaml(dumper, attr_value)
+            val_node = attribute.to_yaml(dumper, attr_value)
 
             # short circuit when the value is the default
-            if value_node is None:
+            if val_node is None:
                 continue
 
-            key_node = dumper.represent_data(attr_name)
-            items.append((key_node, value_node))
+            key_node = dumper.represent_data(attribute.key)
+
+            if attribute.name in round_trip_scalar_data:
+                key_meta, val_meta = self._round_trip_scalar_data[attr_name]
+                _apply_round_trip_data(key_meta, key_node)
+                _apply_round_trip_data(val_meta, val_node)
+
+            items.append((key_node, val_node))
 
         return node
 
@@ -194,7 +211,7 @@ class Sequence(Yamlizable):
 
         items = []
         node = ruamel.yaml.SequenceNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_SEQUENCE_TAG, items)
-        _apply_round_trip_data(self, node)
+        _apply_round_trip_data(getattr(self, '_round_trip_data', None), node)
         dumper.represented_objects[self] = node
 
         for item in self:
