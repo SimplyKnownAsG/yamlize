@@ -34,9 +34,11 @@ class Attribute(object):
     __slots__ = ('name', 'key', 'type', 'default')
 
     def __init__(self, name, key=None, type=ANY, default=NODEFAULT):
+        from yamlize.yamlizable import Yamlizable # prevent recursive import
+
         self.name = name
         self.key = key or name
-        self.type = type
+        self.type = Yamlizable.get_yamlizable(type)
         self.default = default
 
     def from_yaml(self, loader, node):
@@ -66,7 +68,12 @@ class Attribute(object):
                     return
 
                 # attempt to coerce
-                data = self.type(data)
+                try:
+                    data = self.type(data)
+                except:
+                    raise YamlizingError('Failed to coerce value `{}` to type `{}`'
+                                         .format(data, self.type))
+
             return self.type.to_yaml(loader, data)
 
         if self.type is not ANY and not isinstance(data, self.type):

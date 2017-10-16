@@ -131,9 +131,7 @@ class Test_two_way(unittest.TestCase):
     def test_animal_with_friend(self):
         in_stream = six.StringIO('&possum\n'
                                  'name: Possum\n'
-                                 'friend: {'
-                                 'name: Maggie, '
-                                 'friend: *possum}\n'
+                                 'friend: {name: Maggie, friend: *possum}\n'
                                  )
         poss = AnimalWithFriend.load(in_stream)
         maggie = poss.friend
