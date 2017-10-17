@@ -7,6 +7,7 @@ from yamlize import yamlizable
 from yamlize import YamlizingError
 from yamlize import Attribute
 from yamlize import Sequence
+from yamlize import yaml_map
 
 # TODO: write default if default, or no? what about writing a comment indicating it is default?
 
@@ -169,40 +170,29 @@ class Test_two_way(unittest.TestCase):
 
         out_stream = six.StringIO()
         AnimalSequence.dump(animals, out_stream)
-        print in_stream.getvalue()
-        print out_stream.getvalue()
         self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
 
-    @unittest.skip('Missing map')
     def test_mapping(self):
-
-        @yamlizable(Attribute(name='title', type=str),
-                    Attribute(name='year', type=int))
-        class Movie(object):
+        @yaml_map(key_type=str,
+                  value_type=list)
+        class Pantry(object):
             pass
 
-        class MovieLibrary(Map):
-            key_type = str
-            value_type = Movie
-
-        in_stream = six.StringIO('# no friends :(\n'
-                                 '- name: Lucy # no friends\n'
-                                 '- &luna\n'
-                                 '  name: Luna\n'
-                                 '  friends:\n'
-                                 '  - &possum\n'
-                                 '    name: Possum\n'
-                                 '    friends: [*luna]\n'
-                                 '- *possum\n'
+        in_stream = six.StringIO('fruits: [banana, orange]\n'
+                                 'legumes:\n'
+                                 '- kidney bean\n'
+                                 '- pinto bean\n'
+                                 '- peas\n'
                                  )
-        animals = AnimalSequence.load(in_stream)
+        foods = Pantry.load(in_stream)
 
-        self.assertTrue(all(isinstance(a, AnimalWithFriends) for a in animals))
-        self.assertEqual(animals[1], animals[2].friends[0])
-        self.assertEqual(animals[2], animals[1].friends[0])
+        self.assertEqual('banana orange'.split(), foods['fruits'])
+        self.assertEqual(['kidney bean', 'pinto bean', 'peas'], foods['legumes'])
 
         out_stream = six.StringIO()
-        AnimalSequence.dump(animals, out_stream)
+        Pantry.dump(foods, out_stream)
+        print in_stream.getvalue()
+        print out_stream.getvalue()
         self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
 
 

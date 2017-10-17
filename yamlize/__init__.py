@@ -1,6 +1,8 @@
 from yamlize.yamlizingerror import YamlizingError
 from yamlize.objects import Attribute
 from yamlize.sequences import Sequence
+from yamlize.maps import Map
+from yamlize.yamlizable import Yamlizable
 
 
 def yamlizable(*attributes):
@@ -20,4 +22,23 @@ def yamlizable(*attributes):
         return wrapped
 
     return wrapper
+
+
+def yaml_map(key_type, value_type):
+
+    def wrapper(klass):
+
+        class wrapped(klass, Map):
+            __doc__ = klass.__doc__ # AttributeError: __doc__ not writable on type
+
+        wrapped.key_type = Yamlizable.get_yamlizable_type(key_type)
+        wrapped.value_type = Yamlizable.get_yamlizable_type(value_type)
+
+        wrapped.__name__ = klass.__name__
+        wrapped.__module__ = klass.__module__
+
+        return wrapped
+
+    return wrapper
+
 

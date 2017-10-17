@@ -1,15 +1,15 @@
+import ruamel.yaml
+
+from collections import OrderedDict
+from yamlize.yamlizable import Yamlizable, Dynamic
 
 
-class Map(Yamlizable):
+class __MapBase(Yamlizable):
 
     __slots__ = ('__data',)
 
-    key_type = None
-
-    value_type = None
-
     def __init__(self, *args, **kwargs):
-        self.__data = dict(*args, **kwargs)
+        self.__data = OrderedDict(*args, **kwargs)
 
     def __getattr__(self, attr_name):
         return getattr(self.__data, attr_name)
@@ -29,6 +29,18 @@ class Map(Yamlizable):
     def __getitem__(self, index):
         return self.__data[index]
 
+    def __setitem__(self, index, value):
+        self.__data[index] = value
+
+
+class Map(__MapBase):
+
+    __slots__ = ()
+
+    key_type = None
+
+    value_type = None
+
     @classmethod
     def from_yaml(cls, loader, node):
         if not isinstance(node, ruamel.yaml.MappingNode):
@@ -42,13 +54,11 @@ class Map(Yamlizable):
         loader.constructed_objects[node] = self
 
         # node.value list of values
-        for key_node, value_node in node.value:
-            if cls.item_type is not ANY:
-                value = cls.item_type.from_yaml(loader, item_node)
-            else:
-                value = loader.construct_object(item_node, deep=True)
+        for key_node, val_node in node.value:
 
-            self.append(value)
+            key = self.key_type.from_yaml(loader, key_node)
+            val = self.value_type.from_yaml(loader, val_node)
+            self[key] = val
 
         return self
 
@@ -61,16 +71,15 @@ class Map(Yamlizable):
             return dumper.represented_objects[self]
 
         items = []
-        node = ruamel.yaml.SequenceNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_SEQUENCE_TAG, items)
+        node = ruamel.yaml.MappingNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, items)
         self._apply_round_trip_data(node)
         dumper.represented_objects[self] = node
 
-        for item in self:
-            if cls.item_type is not ANY:
-                item_node = cls.item_type.to_yaml(dumper, item)
-            else:
-                item_node = dumper.represent_data(item)
-            items.append(item_node)
+        for key, val in self.items():
+            key_node = self.key_type.to_yaml(dumper, key)
+            val_node = self.value_type.to_yaml(dumper, val)
+            items.append((key_node, val_node))
 
         return node
+
 

@@ -30,6 +30,9 @@ class Sequence(Yamlizable):
     def __getitem__(self, index):
         return self.__items[index]
 
+    def __setitem__(self, index, value):
+        self.__data[index] = value
+
     @classmethod
     def from_yaml(cls, loader, node):
         if not isinstance(node, ruamel.yaml.SequenceNode):
