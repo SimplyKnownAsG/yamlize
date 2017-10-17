@@ -3,11 +3,9 @@ import six
 import inspect
 
 from yamlize import YamlizingError
-from yamlize import Attribute, ANY
-from yamlize import AttributeCollection
 
 
-class AnchorNode(object):
+class _AnchorNode(object):
 
     __slots__ = ('value', )
 
@@ -19,22 +17,12 @@ class Yamlizable(object):
 
     __round_trip_data = None
 
-    __type = None
-
-    __types = dict()
-
     @classmethod
-    def get_yamlizable(cls, type_):
-        from yamlize.attribute import ANY
-
-        if inspect.isclass(type_) and issubclass(type_, Yamlizable) or type_ is ANY:
+    def get_yamlizable_type(cls, type_):
+        if issubclass(type_, Yamlizable):
             return type_
-        elif type not in cls.__types:
-            # attrs = {'load': Yamlizable.load, 'dump': Yamlizable.dump,
-            cls.__types[type_] = type('Yamlizable' + type_.__name__, (type_, Yamlizable), {})
-            cls.__types[type_].__type = type_
-
-        return cls.__types[type_]
+        else:
+            return Strong(type_) # returns a new Strong type
 
     @classmethod
     def load(cls, stream, Loader=ruamel.yaml.RoundTripLoader):
@@ -90,165 +78,107 @@ class Yamlizable(object):
 
         for key, val in self.__round_trip_data.items():
             if key == 'anchor':
-                val = AnchorNode(val)
+                val = _AnchorNode(val)
             setattr(node, key, val)
+
+    @classmethod
+    def from_yaml(cls, loader, node):
+        raise NotImplementedError
+
+    @classmethod
+    def to_yaml(cls, dumper, self):
+        raise NotImplementedError
+
+
+class Dynamic(Yamlizable):
+
+    __type = None
+
+    __types = dict()
+
+    def __new__(cls, type_):
+        if type_ not in cls.__types:
+            # attrs = {'load': Yamlizable.load, 'dump': Yamlizable.dump,
+            cls.__types[type_] = type('DynamicYamlizable' + type_.__name__, (type_, Dynamic), {})
+            cls.__types[type_].__type = type_
+
+        # gets called to create a new
+        return cls.__types[type_]
+
+    @classmethod
+    def from_yaml(cls, loader, node):
+        data = loader.construct_object(node, deep=True)
+        new_type = Yamlizable.get_yamlizable_type(type(data))
+
+        if type(data) is not new_type:
+            try:
+                data = new_type(data) # to coerce to correct type
+                data._set_round_trip_data(node)
+            except:
+                raise YamlizingError('Failed to coerce data `{}` to type `{}`'
+                                     .format(data, cls))
+
+        return data
+
+    @classmethod
+    def to_yaml(cls, dumper, self):
+        if isinstance(self, Dynamic):
+            node = dumper.yaml_representers[cls.__type](dumper, self)
+            self._apply_round_trip_data(node)
+        elif isinstance(self, Yamlizable):
+            # infinite recursion if checked first
+            node = Yamlizable.to_yaml(dumper, self)
+        else:
+            # we've lost round trip data, but that is OK
+            node = dumper.represent_data(self)
+
+        return node
+
+
+class Strong(Yamlizable):
+
+    __type = None
+
+    __types = dict()
+
+    def __new__(cls, type_):
+        if type_ not in cls.__types:
+            # attrs = {'load': Yamlizable.load, 'dump': Yamlizable.dump,
+            cls.__types[type_] = type('StrongYamlizable' + type_.__name__, (type_, Strong), {})
+            cls.__types[type_].__type = type_
+
+        # gets called to create a new
+        return cls.__types[type_]
 
     @classmethod
     def from_yaml(cls, loader, node):
         data = loader.construct_object(node, deep=True)
 
-        try:
-            value = cls(data) # to to coerce to correct type
-        except:
-            raise YamlizingError('Failed to coerce data `{}` to type `{}`'
-                                 .format(data, cls))
+        if type(data) is not cls:
+            try:
+                data = cls(data) # to coerce to correct type
+                data._set_round_trip_data(node)
+            except:
+                raise YamlizingError('Failed to coerce data `{}` to type `{}`'
+                                     .format(data, cls))
 
-        value._set_round_trip_data(node)
-        return value
-
-    @classmethod
-    def to_yaml(cls, dumper, self):
-        node = dumper.yaml_representers[self.__type](dumper, self)
-        # node = dumper.represent_data(self)
-        self._apply_round_trip_data(node)
-        return node
-
-
-class Object(Yamlizable):
-
-    attributes = ()
-
-    @classmethod
-    def from_yaml(cls, loader, node):
-        if not isinstance(node, ruamel.yaml.MappingNode):
-            raise YamlizingError('Expected a mapping node', node)
-
-        if node in loader.constructed_objects:
-            return loader.constructed_objects[node]
-
-        attrs = cls.attributes.by_key
-        self = cls.__new__(cls)
-        self._set_round_trip_data(node)
-        self._attribute_order = []
-        loader.constructed_objects[node] = self
-
-        # node.value is a ordered list of keys and values
-        for key_node, val_node in node.value:
-            key = loader.construct_object(key_node)
-            attribute = attrs.get(key, None)
-
-            if attribute is None:
-                raise YamlizingError('Error parsing {}, found key `{}` but expected any of {}'
-                                     .format(type(self), key, attrs.keys()), node)
-
-            value = attribute.from_yaml(loader, val_node)
-            self._attribute_order.append(key)
-            setattr(self, attribute.name, value)
-
-        return self
+        return data
 
     @classmethod
     def to_yaml(cls, dumper, self):
-        if not isinstance(self, cls):
-            raise YamlizingError('Expected instance of {}, got: {}'.format(cls, self))
+        if not isinstance(self, (cls, cls.__type)):
+            try:
+                self = cls.__type(self) # to coerce to correct type
+            except:
+                raise YamlizingError('Failed to coerce data `{}` to type `{}`'
+                                     .format(self, cls))
 
-        if self in dumper.represented_objects:
-            return dumper.represented_objects[self]
+        node = dumper.yaml_representers[cls.__type](dumper, self)
 
-        attrs = cls.attributes.by_name
-        # self.__round_trip_data = _get_round_trip_data(node)
-        # items is a ordered list of keys and values
-        items = []
-        node = ruamel.yaml.MappingNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, items)
-        self._apply_round_trip_data(node)
-        dumper.represented_objects[self] = node
-
-        attribute_order = getattr(self, '_attribute_order', [])
-        attribute_order += sorted(set(cls.attributes.by_name.keys()) - set(attribute_order))
-
-        for attr_name in attribute_order:
-            attribute = cls.attributes.by_name[attr_name]
-            attr_value = getattr(self, attr_name, attribute.default)
-            val_node = attribute.to_yaml(dumper, attr_value)
-
-            # short circuit when the value is the default
-            if val_node is None:
-                continue
-
-            key_node = dumper.represent_data(attribute.key)
-
-            items.append((key_node, val_node))
+        # it is possible that it is the base type (int, str, etc.) and not Yamlizable
+        if isinstance(self, Yamlizable):
+            self._apply_round_trip_data(node)
 
         return node
 
-
-class Sequence(Yamlizable):
-
-    __slots__ = ('__items',)
-
-    def __init__(self, *items):
-        self.__items = items or []
-
-    def __getattr__(self, attr_name):
-        return getattr(self.__items, attr_name)
-
-    def __iter__(self):
-        return iter(self.__items)
-
-    def __repr__(self):
-        return repr(self.__items)
-
-    def __str__(self):
-        return str(self.__items)
-
-    def __len__(self):
-        return len(self.__items)
-
-    def __getitem__(self, index):
-        return self.__items[index]
-
-    @classmethod
-    def from_yaml(cls, loader, node):
-        if not isinstance(node, ruamel.yaml.SequenceNode):
-            raise YamlizingError('Expected a SequenceNode', node)
-
-        if node in loader.constructed_objects:
-            return loader.constructed_objects[node]
-
-        self = cls()
-        self._set_round_trip_data(node)
-        loader.constructed_objects[node] = self
-
-        # node.value list of values
-        for item_node in node.value:
-            if cls.item_type is not ANY:
-                value = cls.item_type.from_yaml(loader, item_node)
-            else:
-                value = loader.construct_object(item_node, deep=True)
-
-            self.append(value)
-
-        return self
-
-    @classmethod
-    def to_yaml(cls, dumper, self):
-        if not isinstance(self, cls):
-            raise YamlizingError('Expected instance of {}, got: {}'.format(cls, self))
-
-        if self in dumper.represented_objects:
-            return dumper.represented_objects[self]
-
-        items = []
-        node = ruamel.yaml.SequenceNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_SEQUENCE_TAG, items)
-        self._apply_round_trip_data(node)
-        dumper.represented_objects[self] = node
-
-        for item in self:
-            if cls.item_type is not ANY:
-                item_node = cls.item_type.to_yaml(dumper, item)
-            else:
-                item_node = dumper.represent_data(item)
-            items.append(item_node)
-
-        return node
 

@@ -1,14 +1,13 @@
 from yamlize.yamlizingerror import YamlizingError
-from yamlize.attribute import Attribute, ANY
-from yamlize.attribute import AttributeCollection
-from yamlize.yamlizable import Object, Sequence
+from yamlize.objects import Attribute
+from yamlize.sequences import Sequence
 
 
 def yamlizable(*attributes):
+    from yamlize.objects import Object, AttributeCollection
     yaml_attributes = AttributeCollection(*attributes)
 
     def wrapper(klass):
-        from ruamel.yaml.comments import CommentedMap
 
         class wrapped(klass, Object):
             __doc__ = klass.__doc__ # AttributeError: __doc__ not writable on type

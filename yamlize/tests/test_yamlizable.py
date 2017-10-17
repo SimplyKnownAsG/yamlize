@@ -140,7 +140,7 @@ class Test_two_way(unittest.TestCase):
         AnimalWithFriend.dump(poss, out_stream)
         self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
 
-    def test_list_animals_with_friends(self):
+    def test_sequence(self):
 
         @yamlizable(Attribute(name='name', type=str))
         class AnimalWithFriends(object):
@@ -171,6 +171,38 @@ class Test_two_way(unittest.TestCase):
         AnimalSequence.dump(animals, out_stream)
         print in_stream.getvalue()
         print out_stream.getvalue()
+        self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
+
+    @unittest.skip('Missing map')
+    def test_mapping(self):
+
+        @yamlizable(Attribute(name='title', type=str),
+                    Attribute(name='year', type=int))
+        class Movie(object):
+            pass
+
+        class MovieLibrary(Map):
+            key_type = str
+            value_type = Movie
+
+        in_stream = six.StringIO('# no friends :(\n'
+                                 '- name: Lucy # no friends\n'
+                                 '- &luna\n'
+                                 '  name: Luna\n'
+                                 '  friends:\n'
+                                 '  - &possum\n'
+                                 '    name: Possum\n'
+                                 '    friends: [*luna]\n'
+                                 '- *possum\n'
+                                 )
+        animals = AnimalSequence.load(in_stream)
+
+        self.assertTrue(all(isinstance(a, AnimalWithFriends) for a in animals))
+        self.assertEqual(animals[1], animals[2].friends[0])
+        self.assertEqual(animals[2], animals[1].friends[0])
+
+        out_stream = six.StringIO()
+        AnimalSequence.dump(animals, out_stream)
         self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
 
 
