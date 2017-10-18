@@ -8,6 +8,7 @@ from yamlize import YamlizingError
 from yamlize import Attribute
 from yamlize import Sequence
 from yamlize import yaml_map
+from yamlize import yaml_keyed_list
 
 # TODO: write default if default, or no? what about writing a comment indicating it is default?
 
@@ -193,6 +194,32 @@ class Test_two_way(unittest.TestCase):
         Pantry.dump(foods, out_stream)
         print in_stream.getvalue()
         print out_stream.getvalue()
+        self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
+
+    def test_keyed_list(self):
+
+        @yamlizable(Attribute(name='name', type=str),
+                    Attribute(name='age', type=int))
+        class Animal(object):
+            pass
+
+        @yaml_keyed_list(key_name='name',
+                         item_type=Animal)
+        class Kennel(object):
+            pass
+
+        in_stream = six.StringIO('Lucy:\n'
+                                 '  age: 5\n'
+                                 'Luna:\n'
+                                 '  age: 1\n'
+                                 )
+        kennel = Kennel.load(in_stream)
+
+        self.assertEqual(5, kennel['Lucy'].age)
+        self.assertEqual(1, kennel['Luna'].age)
+
+        out_stream = six.StringIO()
+        Kennel.dump(kennel, out_stream)
         self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
 
 

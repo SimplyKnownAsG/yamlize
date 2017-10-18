@@ -71,6 +71,112 @@ class Object(Yamlizable):
 
         return node
 
+    @classmethod
+    def from_yaml_key_val(cls, loader, key_node, val_node, key_name):
+        if val_node in loader.constructed_objects:
+            return loader.constructed_objects[val_node]
+
+        attrs = cls.attributes.by_key
+        self = cls.__new__(cls)
+        self._attribute_order = []
+        loader.constructed_objects[val_node] = self
+
+        key_attribute = cls.attributes.by_name.get(key_name, None)
+
+        if key_attribute is None:
+            raise YamlizingError('Error parsing {}, there is no attribute named `{}`'
+                                 .format(type(self), key_name), key_node)
+
+        setattr(self, key_name, key_attribute.from_yaml(loader, key_node))
+
+        # node.value is a ordered list of keys and values
+        for k_node, v_node in val_node.value:
+            key = loader.construct_object(k_node)
+            attribute = attrs.get(key, None)
+
+            if attribute is None:
+                raise YamlizingError('Error parsing {}, found key `{}` but expected any of {}'
+                                     .format(type(self), key, attrs.keys()), node)
+
+            value = attribute.from_yaml(loader, v_node)
+            self._attribute_order.append(key)
+            setattr(self, attribute.name, value)
+
+        return self
+
+    @classmethod
+    def to_yaml_key_val(cls, dumper, self):
+        if val_node in dumper.represented_objects:
+            return dumper.represented_objects[val_node]
+
+        attrs = cls.attributes.by_name
+        items = []
+        node = ruamel.yaml.MappingNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, items)
+        self._apply_round_trip_data(node)
+        loader.represnted_objects[self] = self
+
+        key_attribute = cls.attributes.by_name.get(key_name, None)
+
+        if key_attribute is None:
+            raise YamlizingError('Error parsing {}, there is no attribute named `{}`'
+                                 .format(type(self), key_name), key_node)
+
+        setattr(self, key_name, key_attribute.from_yaml(loader, key_node))
+
+        # node.value is a ordered list of keys and values
+        for attr_name in attribute_order:
+            key = loader.construct_object(k_node)
+            attribute = attrs.get(key, None)
+
+            if attribute is None:
+                raise YamlizingError('Error parsing {}, found key `{}` but expected any of {}'
+                                     .format(type(self), key, attrs.keys()), node)
+
+            value = attribute.from_yaml(loader, v_node)
+            self._attribute_order.append(key)
+            setattr(self, attribute.name, value)
+
+        return self
+
+    @classmethod
+    def to_yaml_key_val(cls, dumper, self, key_name):
+        if not isinstance(self, cls):
+            raise YamlizingError('Expected instance of {}, got: {}'.format(cls, self))
+
+        if self in dumper.represented_objects:
+            return dumper.represented_objects[self]
+
+        attrs = cls.attributes.by_name
+        items = []
+        node = ruamel.yaml.MappingNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, items)
+        self._apply_round_trip_data(node)
+        dumper.represented_objects[self] = node
+
+        attribute_order = getattr(self, '_attribute_order', [])
+        attribute_order += sorted(set(cls.attributes.by_name.keys()) - set(attribute_order))
+        list_key_node = None
+
+        for attr_name in attribute_order:
+            attribute = cls.attributes.by_name[attr_name]
+            attr_value = getattr(self, attr_name, attribute.default)
+            val_node = attribute.to_yaml(dumper, attr_value)
+
+            # short circuit when the value is the default
+            if val_node is None:
+                continue
+
+            # this is the "index" node, so it shouldn't be in the object dict
+            if attr_name == key_name:
+                list_key_node = val_node
+                continue
+
+            key_node = dumper.represent_data(attribute.key)
+
+            items.append((key_node, val_node))
+
+        return list_key_node, node
+
+
 
 class NODEFAULT:
 

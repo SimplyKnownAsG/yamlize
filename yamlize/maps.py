@@ -55,7 +55,6 @@ class Map(__MapBase):
 
         # node.value list of values
         for key_node, val_node in node.value:
-
             key = self.key_type.from_yaml(loader, key_node)
             val = self.value_type.from_yaml(loader, val_node)
             self[key] = val
@@ -82,4 +81,49 @@ class Map(__MapBase):
 
         return node
 
+
+class KeyedList(Map):
+
+    __slots__ = ()
+
+    key_name = None
+
+    item_type = None
+
+    @classmethod
+    def from_yaml(cls, loader, node):
+        if not isinstance(node, ruamel.yaml.MappingNode):
+            raise YamlizingError('Expected a MappingNode', node)
+
+        if node in loader.constructed_objects:
+            return loader.constructed_objects[node]
+
+        self = cls()
+        self._set_round_trip_data(node)
+        loader.constructed_objects[node] = self
+
+        # node.value list of values
+        for key_node, val_node in node.value:
+            val = cls.item_type.from_yaml_key_val(loader, key_node, val_node, cls.key_name)
+            self[getattr(val, cls.key_name)] = val
+
+        return self
+
+    @classmethod
+    def to_yaml(cls, dumper, self):
+        if not isinstance(self, cls):
+            raise YamlizingError('Expected instance of {}, got: {}'.format(cls, self))
+
+        if self in dumper.represented_objects:
+            return dumper.represented_objects[self]
+
+        items = []
+        node = ruamel.yaml.MappingNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, items)
+        self._apply_round_trip_data(node)
+        dumper.represented_objects[self] = node
+
+        for val in self.values():
+            items.append(self.item_type.to_yaml_key_val(dumper, val, cls.key_name))
+
+        return node
 
