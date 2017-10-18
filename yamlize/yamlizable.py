@@ -139,7 +139,7 @@ class Strong(Yamlizable):
 
     __type = None
 
-    __types = dict()
+    __types = {bool:bool}
 
     def __new__(cls, type_):
         if type_ not in cls.__types:

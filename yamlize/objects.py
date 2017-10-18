@@ -34,7 +34,7 @@ class Object(Yamlizable):
                                      .format(type(self), key, attrs.keys()), node)
 
             value = attribute.from_yaml(loader, val_node)
-            self._attribute_order.append(key)
+            self._attribute_order.append(attribute.name)
             setattr(self, attribute.name, value)
 
         return self
@@ -79,6 +79,7 @@ class Object(Yamlizable):
         attrs = cls.attributes.by_key
         self = cls.__new__(cls)
         self._attribute_order = []
+        self._set_round_trip_data(val_node)
         loader.constructed_objects[val_node] = self
 
         key_attribute = cls.attributes.by_name.get(key_name, None)
@@ -214,9 +215,10 @@ class Attribute(object):
         if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
             return self.type.from_yaml(loader, node)
 
+        # this will happen for something that is not subclass-able, such as bool
         value = loader.construct_object(node, deep=True)
 
-        if self.type is ANY or isinstance(value, self.type):
+        if isinstance(value, self.type):
             return value
         else:
             try:
@@ -230,14 +232,18 @@ class Attribute(object):
             # short circuit, don't write out default data
             return
 
-        # if not isinstance(data, self.type):
-        #     try:
-        #         data = self.type(data)
-        #     except:
-        #         raise YamlizingError('Failed to coerce value `{}` to type `{}`'
-        #                              .format(data, self.type))
+        if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
+            return self.type.to_yaml(dumper, data)
 
-        return self.type.to_yaml(dumper, data)
+        # this will happen for something that is not subclass-able, such as bool
+        if not isinstance(data, self.type):
+            try:
+                data = self.type(data)
+            except:
+                raise YamlizingError('Failed to coerce value `{}` to type `{}`'
+                                     .format(data, self.type))
+
+        return dumper.represent_data(data)
 
 
 class AttributeCollection(object):
