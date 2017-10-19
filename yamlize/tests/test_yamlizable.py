@@ -1,4 +1,3 @@
-
 import unittest
 
 import six
@@ -48,13 +47,19 @@ class Test_from_yaml(unittest.TestCase):
             Animal.load(stream)
 
     def test_attrs_applied(self):
-        stream = six.StringIO('name: Possum\nage: 5')
+        stream = 'name: Possum\nage: 5'
         poss = Animal.load(stream)
         self.assertTrue(hasattr(poss, 'name'))
         self.assertTrue(hasattr(poss, 'age'))
 
+    def test_missing_non_default_attributes_fail(self):
+        stream = 'name: Possum'
+        with self.assertRaises(YamlizingError):
+            Animal.load(stream)
+        self.assertEqual(None, AnimalWithFriend.load(stream).friend)
+
     def test_bonus_attributes_fail(self):
-        stream = six.StringIO('name: Possum\nage: 5\nbonus: fail')
+        stream = 'name: Possum\nage: 5\nbonus: fail'
         with self.assertRaises(YamlizingError):
             Animal.load(stream)
 
@@ -171,55 +176,6 @@ class Test_two_way(unittest.TestCase):
 
         out_stream = six.StringIO()
         AnimalSequence.dump(animals, out_stream)
-        self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
-
-    def test_mapping(self):
-        @yaml_map(key_type=str,
-                  value_type=list)
-        class Pantry(object):
-            pass
-
-        in_stream = six.StringIO('fruits: [banana, orange]\n'
-                                 'legumes:\n'
-                                 '- kidney bean\n'
-                                 '- pinto bean\n'
-                                 '- peas\n'
-                                 )
-        foods = Pantry.load(in_stream)
-
-        self.assertEqual('banana orange'.split(), foods['fruits'])
-        self.assertEqual(['kidney bean', 'pinto bean', 'peas'], foods['legumes'])
-
-        out_stream = six.StringIO()
-        Pantry.dump(foods, out_stream)
-        print in_stream.getvalue()
-        print out_stream.getvalue()
-        self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
-
-    def test_keyed_list(self):
-
-        @yamlizable(Attribute(name='name', type=str),
-                    Attribute(name='age', type=int))
-        class Animal(object):
-            pass
-
-        @yaml_keyed_list(key_name='name',
-                         item_type=Animal)
-        class Kennel(object):
-            pass
-
-        in_stream = six.StringIO('Lucy:\n'
-                                 '  age: 5\n'
-                                 'Luna:\n'
-                                 '  age: 1\n'
-                                 )
-        kennel = Kennel.load(in_stream)
-
-        self.assertEqual(5, kennel['Lucy'].age)
-        self.assertEqual(1, kennel['Luna'].age)
-
-        out_stream = six.StringIO()
-        Kennel.dump(kennel, out_stream)
         self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
 
 

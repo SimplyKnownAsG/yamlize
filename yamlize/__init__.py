@@ -2,7 +2,7 @@ from yamlize.yamlizingerror import YamlizingError
 from yamlize.objects import Attribute
 from yamlize.sequences import Sequence
 from yamlize.maps import Map, KeyedList
-from yamlize.yamlizable import Yamlizable
+from yamlize.yamlizable import Yamlizable, Dynamic
 
 
 def yamlizable(*attributes):
@@ -24,7 +24,7 @@ def yamlizable(*attributes):
     return wrapper
 
 
-def yaml_map(key_type, value_type):
+def yaml_map(key_type=Dynamic, value_type=Dynamic):
 
     def wrapper(klass):
 

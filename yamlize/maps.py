@@ -1,7 +1,9 @@
 import ruamel.yaml
 
 from collections import OrderedDict
+
 from yamlize.yamlizable import Yamlizable, Dynamic
+from yamlize import YamlizingError
 
 
 class __MapBase(Yamlizable):
@@ -31,6 +33,9 @@ class __MapBase(Yamlizable):
 
     def __setitem__(self, index, value):
         self.__data[index] = value
+
+    def __delitem__(self, index):
+        del self.__data[index]
 
 
 class Map(__MapBase):
@@ -82,13 +87,23 @@ class Map(__MapBase):
         return node
 
 
-class KeyedList(Map):
+class KeyedList(__MapBase):
 
     __slots__ = ()
 
     key_name = None
 
     item_type = None
+
+    def __setitem__(self, index, value):
+        if getattr(value, self.key_name) != index:
+            raise KeyError('KeyedList expected key to be `{}`, but got `{}`. Check the value\'s '
+                           '`{}` attribute.'
+                           .format(getattr(value, self.key_name), index, self.key_name))
+        super(KeyedList, self).__setitem__(index, value)
+
+    def add(self, item):
+        super(KeyedList, self).__setitem__(getattr(item, self.key_name), item)
 
     @classmethod
     def from_yaml(cls, loader, node):

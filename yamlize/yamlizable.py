@@ -108,15 +108,15 @@ class Dynamic(Yamlizable):
     @classmethod
     def from_yaml(cls, loader, node):
         data = loader.construct_object(node, deep=True)
-        new_type = Yamlizable.get_yamlizable_type(type(data))
+        new_type = Dynamic(type(data))
 
         if type(data) is not new_type:
             try:
                 data = new_type(data) # to coerce to correct type
                 data._set_round_trip_data(node)
             except:
-                raise YamlizingError('Failed to coerce data `{}` to type `{}`'
-                                     .format(data, cls))
+                # ok, we couldn't coerce the type, but whatev's, it's dynamic!
+                pass
 
         return data
 
