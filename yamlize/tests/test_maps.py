@@ -6,8 +6,8 @@ import six
 from yamlize import yamlizable
 from yamlize import YamlizingError
 from yamlize import Attribute
-from yamlize import Sequence
 from yamlize import yaml_map
+from yamlize import Dynamic
 from yamlize import yaml_keyed_list
 
 
@@ -84,6 +84,28 @@ class Test_from_yaml(unittest.TestCase):
 
         with self.assertRaises(YamlizingError):
             NamedKennel.load('{Lucy: }')
+
+    @unittest.skip('TODO')
+    def test_map_with_attribute(self):
+        @yaml_map(str,
+                  Dynamic,
+                  Attribute(name='name', type=str))
+        class NamedMap(object):
+            pass
+
+        blt = NamedMap.load('{name: blt, meat: bacon, cheese: Gorgonzola}')
+        self.assertEqual('blt', blt.name)
+        self.assertFalse(hasattr(blt, 'meat'))
+        self.assertFalse(hasattr(blt, 'cheese'))
+        self.assertEqual('bacon', blt['meat'])
+        self.assertEqual('Gorgonzola', blt['cheese'])
+
+        # @yaml_keyed_list(key_name='name',
+        #                  item_type=NamedMap)
+
+        # things = CThings.load(TestSubclassing.multiple_merge)
+        # actual = CThings.dump(things).strip()
+        # self.assertEqual(TestSubclassing.multiple_merge, actual)
 
 
 class Test_to_yaml(unittest.TestCase):

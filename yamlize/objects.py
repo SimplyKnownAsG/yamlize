@@ -189,7 +189,7 @@ class Object(Yamlizable):
                                for parent in parents])
 
             if not from_parent:
-                if attr.default is not NODEFAULT:
+                if attr.has_default:
                     setattr(self, attr.name, attr.default)
                 else:
                     # hold on to a running list so user doesn't need to rerun
@@ -242,12 +242,10 @@ class Object(Yamlizable):
         dumper.represented_objects[self] = node
 
         if self.__merge_parents is not None:
-            remove_links = []
-
             if self.__complete_inheritance:
                 merge_parent = self.__merge_parents[0]
                 if merge_parent.is_parent(self, dumper, represented_attrs):
-                    if not any(self.attributes.required - represented_attrs):
+                    if not any(self.attributes.required_names - represented_attrs):
                         del dumper.represented_objects[self]
                         return dumper.represented_objects[merge_parent.parent]
                     else:
@@ -255,6 +253,8 @@ class Object(Yamlizable):
                         vn = dumper.represented_objects[merge_parent.parent]
                         node_items.append((kn, vn))
             else:
+                remove_links = []
+
                 for index, merge_parent in enumerate(self.__merge_parents):
                     if merge_parent.is_parent(self, dumper, represented_attrs):
                         kn = _create_merge_node()
@@ -290,120 +290,3 @@ class Object(Yamlizable):
         return node
 
 
-class NODEFAULT:
-
-    def __init__(self):
-        raise NotImplementedError
-
-
-class Attribute(object):
-    """
-    Represents an attribute of a Python class, and a key/value pair in YAML.
-
-    Attributes
-    ----------
-    name : str
-        name of the attribute within the Python class
-    key : str
-        name of the attribute within the YAML representation
-    type : type or ANY
-        type of the attribute within the Python class. When ``ANY``, the type
-        is a pass-through and whatever YAML determines it should be will be
-        applied.
-    default : value or NODEFAULT
-        default value if not supplied in YAML. If ``default=NODEFAULT``, then
-        the attribute must be supplied.
-    """
-
-    __slots__ = ('name', 'key', 'type', 'default')
-
-    def __init__(self, name, key=None, type=NODEFAULT, default=NODEFAULT):
-        self.name = name
-        self.key = key or name
-        self.type = Yamlizable.get_yamlizable_type(
-            type) if type != NODEFAULT else Dynamic
-        self.default = default
-
-    def ensure_type(self, data, node):
-        if isinstance(data, self.type) or data == self.default:
-            return data
-
-        try:
-            new_value = self.type(data)
-        except BaseException:
-            raise YamlizingError('Failed to coerce value `{}` to type `{}`'
-                                 .format(data, self.type), node)
-
-        if new_value != data:
-            raise YamlizingError('Coerced `{}` to `{}`, but the new value `{}`'
-                                 ' is not equal to old `{}`.'
-                                 .format(type(data), type(new_value),
-                                         new_value, data),
-                                 node)
-
-        return new_value
-
-    def from_yaml(self, loader, node):
-        if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
-            return self.type.from_yaml(loader, node)
-
-        # this will happen for something that is not subclass-able, such as
-        # bool
-        value = loader.construct_object(node, deep=True)
-
-        return self.ensure_type(value, node)
-
-    def to_yaml(self, dumper, data):
-        if data == self.default and data is not NODEFAULT:
-            # short circuit, don't write out default data
-            return
-
-        if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
-            return self.type.to_yaml(dumper, data)
-
-        # this will happen for something that is not subclass-able, such as
-        # bool
-        if not isinstance(data, self.type):
-            try:
-                data = self.type(data)
-            except BaseException:
-                raise YamlizingError('Failed to coerce value `{}` to type `{}`'
-                                     .format(data, self.type))
-
-        return dumper.represent_data(data)
-
-
-class AttributeCollection(object):
-
-    __slots__ = ('by_key', 'by_name')
-
-    def __init__(self, *args, **kwargs):
-        self.by_key = dict()
-        self.by_name = dict()
-        for item in args:
-            if not isinstance(item, Attribute):
-                raise TypeError('Incorrect type {} while initializing '
-                                'AttributeCollection with {}'
-                                .format(type(item), item))
-            self.add(item)
-
-    def __iter__(self):
-        return iter(self.by_key.values())
-
-    @property
-    def required(self):
-        return {attr.name for attr in self if attr.default is NODEFAULT}
-
-    def add(self, attr):
-        if attr.key in self.by_key:
-            raise KeyError('AttributeCollection already contains an entry for '
-                           '{}, previously defined: {}'
-                           .format(attr.key, self.by_key[attr.key]))
-
-        if attr.name in self.by_name:
-            raise KeyError('AttributeCollection already contains an entry for '
-                           '{}, previously defined: {}'
-                           .format(attr.name, self.by_name[attr.name]))
-
-        self.by_key[attr.key] = attr
-        self.by_name[attr.name] = attr

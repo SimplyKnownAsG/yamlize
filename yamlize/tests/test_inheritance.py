@@ -3,8 +3,10 @@ import unittest
 
 from yamlize import yamlizable
 from yamlize import Attribute
+from yamlize import Dynamic
 from yamlize import yaml_keyed_list
-from yamlize import Sequence
+from yamlize import yaml_list
+from yamlize import yaml_map
 from yamlize import YamlizingError
 
 
@@ -16,8 +18,9 @@ class Animal(object):
         self.age = age
 
 
-class AnimalList(Sequence):
-    item_type = Animal
+@yaml_list(item_type=Animal)
+class AnimalList(object):
+    pass
 
 
 @yaml_keyed_list(key_name='name',
@@ -39,7 +42,7 @@ class Things(object):
     pass
 
 
-class TestInheritance(unittest.TestCase):
+class TestMergeAndAnchor(unittest.TestCase):
 
     multiple_merge = '''
 thing1: &thing1
@@ -56,13 +59,12 @@ thing3:
 '''.strip()
 
     def test_multiple_merge(self):
-
-        things = Things.load(TestInheritance.multiple_merge)
+        things = Things.load(TestMergeAndAnchor.multiple_merge)
         actual = Things.dump(things).strip()
-        self.assertEqual(TestInheritance.multiple_merge, actual)
+        self.assertEqual(TestMergeAndAnchor.multiple_merge, actual)
 
     def test_multiple_merge_delete_parent(self):
-        things = Things.load(TestInheritance.multiple_merge)
+        things = Things.load(TestMergeAndAnchor.multiple_merge)
         del things['thing1']
         yaml = Things.dump(things)
         self.assertNotIn('thing1', yaml)
@@ -90,7 +92,7 @@ things:
             pass
 
         with self.assertRaisesRegexp(YamlizingError, 'this will fail'):
-            BadData.load(TestInheritance.bad_data_merge)
+            BadData.load(TestMergeAndAnchor.bad_data_merge)
 
     list_inheritance = """
 - &lucy {name: Lucy, age: 5}
@@ -98,12 +100,12 @@ things:
 """.strip()
 
     def test_yaml_list_inheritance(self):
-        pets = AnimalList.load(TestInheritance.list_inheritance)
+        pets = AnimalList.load(TestMergeAndAnchor.list_inheritance)
         self.assertEqual('Lucy', pets[0].name)
         self.assertEqual('Possum', pets[1].name)
         self.assertEqual(5, pets[1].age)
         actual = AnimalList.dump(pets).strip()
-        self.assertEqual(TestInheritance.list_inheritance, actual)
+        self.assertEqual(TestMergeAndAnchor.list_inheritance, actual)
 
     keyed_list_complete_inheritance = """
 thing1: &thing1
@@ -114,14 +116,14 @@ thing2: *thing1
 """.strip()
 
     def test_yaml_keyed_complete_inheritance(self):
-        things = Things.load(TestInheritance.keyed_list_complete_inheritance)
+        things = Things.load(TestMergeAndAnchor.keyed_list_complete_inheritance)
         self.assertIn('thing1', things)
         self.assertIn('thing2', things)
         actual = Things.dump(things).strip()
-        self.assertEqual(TestInheritance.keyed_list_complete_inheritance,
+        self.assertEqual(TestMergeAndAnchor.keyed_list_complete_inheritance,
                          actual)
 
-    list_complete_inheritance = """
+    list_from_alias = """
 - &lucy
   name: Lucy
   age: 5
@@ -129,9 +131,44 @@ thing2: *thing1
 """.strip()
 
     def test_yaml_list_complete_inheritance(self):
-        lucy_twice = AnimalList.load(TestInheritance.list_complete_inheritance)
+        lucy_twice = AnimalList.load(TestMergeAndAnchor.list_from_alias)
         actual = AnimalList.dump(lucy_twice).strip()
-        self.assertEqual(TestInheritance.list_complete_inheritance, actual)
+        self.assertEqual(TestMergeAndAnchor.list_from_alias, actual)
+
+
+class TestSubclassing(unittest.TestCase):
+
+    multiple_merge = '''
+thing1: &thing1
+  int_attr: 1
+  str_attr: '1'
+  float_attr: 99.2
+thing2: &thing2
+  <<: *thing1
+  str_attr: an actual string
+  color: blue
+thing3:
+  <<: *thing1
+  <<: *thing2
+  float_attr: 42.42
+  color: green
+'''.strip()
+
+    def test_object_subclass(self):
+        @yamlizable(Attribute(name='color', type=str, default='yellow'))
+        class ColorThing(Thing):
+            pass
+
+        self.assertIn('int_attr', ColorThing.attributes.by_name)
+
+        @yaml_keyed_list(key_name='name', item_type=ColorThing)
+        class CThings(object):
+            pass
+
+        things = CThings.load(TestSubclassing.multiple_merge)
+        actual = CThings.dump(things).strip()
+        self.assertEqual(TestSubclassing.multiple_merge, actual)
+
 
 if __name__ == '__main__':
     unittest.main()

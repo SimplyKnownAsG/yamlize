@@ -5,7 +5,7 @@ import six
 from yamlize import yamlizable
 from yamlize import YamlizingError
 from yamlize import Attribute
-from yamlize import Sequence
+from yamlize import yaml_list
 from yamlize import yaml_map
 from yamlize import yaml_keyed_list
 
@@ -153,8 +153,9 @@ class Test_two_way(unittest.TestCase):
         class AnimalWithFriends(object):
             pass
 
-        class AnimalSequence(Sequence):
-            item_type = AnimalWithFriends
+        @yaml_list(item_type=AnimalWithFriends)
+        class AnimalSequence(object):
+            pass
 
         AnimalWithFriends.attributes.add(Attribute(name='friends',
                                                    type=AnimalSequence,
