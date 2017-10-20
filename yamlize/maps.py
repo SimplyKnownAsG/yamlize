@@ -69,13 +69,16 @@ class Map(__MapBase):
     @classmethod
     def to_yaml(cls, dumper, self):
         if not isinstance(self, cls):
-            raise YamlizingError('Expected instance of {}, got: {}'.format(cls, self))
+            raise YamlizingError(
+                'Expected instance of {}, got: {}'.format(
+                    cls, self))
 
         if self in dumper.represented_objects:
             return dumper.represented_objects[self]
 
         items = []
-        node = ruamel.yaml.MappingNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, items)
+        node = ruamel.yaml.MappingNode(
+            ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, items)
         self._apply_round_trip_data(node)
         dumper.represented_objects[self] = node
 
@@ -97,9 +100,10 @@ class KeyedList(__MapBase):
 
     def __setitem__(self, index, value):
         if getattr(value, self.key_name) != index:
-            raise KeyError('KeyedList expected key to be `{}`, but got `{}`. Check the value\'s '
-                           '`{}` attribute.'
-                           .format(getattr(value, self.key_name), index, self.key_name))
+            raise KeyError("KeyedList expected key to be `{}`, but got `{}`. "
+                           "Check the value\'s `{}` attribute."
+                           .format(getattr(value, self.key_name),
+                                   index, self.key_name))
         super(KeyedList, self).__setitem__(index, value)
 
     def add(self, item):
@@ -119,7 +123,8 @@ class KeyedList(__MapBase):
 
         # node.value list of values
         for key_node, val_node in node.value:
-            val = cls.item_type.from_yaml_key_val(loader, key_node, val_node, cls.key_name)
+            val = cls.item_type.from_yaml_key_val(
+                loader, key_node, val_node, cls.key_name)
             self[getattr(val, cls.key_name)] = val
 
         return self
@@ -127,18 +132,22 @@ class KeyedList(__MapBase):
     @classmethod
     def to_yaml(cls, dumper, self):
         if not isinstance(self, cls):
-            raise YamlizingError('Expected instance of {}, got: {}'.format(cls, self))
+            raise YamlizingError(
+                'Expected instance of {}, got: {}'.format(
+                    cls, self))
 
         if self in dumper.represented_objects:
             return dumper.represented_objects[self]
 
         items = []
-        node = ruamel.yaml.MappingNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, items)
+        node = ruamel.yaml.MappingNode(
+            ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, items)
         self._apply_round_trip_data(node)
         dumper.represented_objects[self] = node
 
         for val in self.values():
-            items.append(self.item_type.to_yaml_key_val(dumper, val, cls.key_name))
+            items.append(
+                self.item_type.to_yaml_key_val(
+                    dumper, val, cls.key_name))
 
         return node
-

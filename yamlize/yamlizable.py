@@ -22,11 +22,12 @@ class Yamlizable(object):
         if issubclass(type_, Yamlizable):
             return type_
         else:
-            return Strong(type_) # returns a new Strong type
+            return Strong(type_)  # returns a new Strong type
 
     @classmethod
     def load(cls, stream, Loader=ruamel.yaml.RoundTripLoader):
-        # can't use ruamel.yaml.load because I need a Resolver/loader for resolving non-string types
+        # can't use ruamel.yaml.load because I need a Resolver/loader for
+        # resolving non-string types
         loader = Loader(stream)
         try:
             node = loader.get_single_node()
@@ -36,7 +37,8 @@ class Yamlizable(object):
 
     @classmethod
     def dump(cls, data, stream=None, Dumper=ruamel.yaml.RoundTripDumper):
-        # can't use ruamel.yaml.load because I need a Resolver/loader for resolving non-string types
+        # can't use ruamel.yaml.load because I need a Resolver/loader for
+        # resolving non-string types
         convert_to_string = stream is None
         stream = stream or six.StringIO()
         dumper = Dumper(stream)
@@ -99,7 +101,8 @@ class Dynamic(Yamlizable):
     def __new__(cls, type_):
         if type_ not in cls.__types:
             # attrs = {'load': Yamlizable.load, 'dump': Yamlizable.dump,
-            cls.__types[type_] = type('DynamicYamlizable' + type_.__name__, (type_, Dynamic), {})
+            cls.__types[type_] = type(
+                'DynamicYamlizable' + type_.__name__, (type_, Dynamic), {})
             cls.__types[type_].__type = type_
 
         # gets called to create a new
@@ -110,11 +113,11 @@ class Dynamic(Yamlizable):
         data = loader.construct_object(node, deep=True)
         new_type = Dynamic(type(data))
 
-        if type(data) is not new_type:
+        if not isinstance(data, new_type):
             try:
-                data = new_type(data) # to coerce to correct type
+                data = new_type(data)  # to coerce to correct type
                 data._set_round_trip_data(node)
-            except:
+            except BaseException:
                 # ok, we couldn't coerce the type, but whatev's, it's dynamic!
                 pass
 
@@ -139,12 +142,13 @@ class Strong(Yamlizable):
 
     __type = None
 
-    __types = {bool:bool}
+    __types = {bool: bool}
 
     def __new__(cls, type_):
         if type_ not in cls.__types:
             # attrs = {'load': Yamlizable.load, 'dump': Yamlizable.dump,
-            cls.__types[type_] = type('StrongYamlizable' + type_.__name__, (type_, Strong), {})
+            cls.__types[type_] = type(
+                'StrongYamlizable' + type_.__name__, (type_, Strong), {})
             cls.__types[type_].__type = type_
 
         # gets called to create a new
@@ -154,11 +158,11 @@ class Strong(Yamlizable):
     def from_yaml(cls, loader, node):
         data = loader.construct_object(node, deep=True)
 
-        if type(data) is not cls:
+        if not isinstance(data, cls):
             try:
-                data = cls(data) # to coerce to correct type
+                data = cls(data)  # to coerce to correct type
                 data._set_round_trip_data(node)
-            except:
+            except BaseException:
                 raise YamlizingError('Failed to coerce data `{}` to type `{}`'
                                      .format(data, cls))
 
@@ -168,17 +172,16 @@ class Strong(Yamlizable):
     def to_yaml(cls, dumper, self):
         if not isinstance(self, (cls, cls.__type)):
             try:
-                self = cls.__type(self) # to coerce to correct type
-            except:
+                self = cls.__type(self)  # to coerce to correct type
+            except BaseException:
                 raise YamlizingError('Failed to coerce data `{}` to type `{}`'
                                      .format(self, cls))
 
         node = dumper.yaml_representers[cls.__type](dumper, self)
 
-        # it is possible that it is the base type (int, str, etc.) and not Yamlizable
+        # it is possible that it is the base type (int, str, etc.) and not
+        # Yamlizable
         if isinstance(self, Yamlizable):
             self._apply_round_trip_data(node)
 
         return node
-
-

@@ -6,6 +6,13 @@ from yamlize.yamlizable import Yamlizable, Dynamic
 from yamlize import YamlizingError
 
 
+MERGE_TAG = u'tag:yaml.org,2002:merge'
+
+
+def _create_merge_node():
+    return ruamel.yaml.ScalarNode(MERGE_TAG, '<<')
+
+
 class _ParentLink(object):
 
     __slots__ = ('parent', 'attributes')
@@ -15,21 +22,24 @@ class _ParentLink(object):
         self.attributes = []
 
     def try_set_attr(self, obj, attribute, node):
-        '''Attempts to set obj attribute from parent, returns True if successful, otherwise False.'''
+        '''
+        Attempts to set obj attribute from parent, returns True if successful,
+        otherwise False.
+        '''
         attr_name = attribute.name
-        parent = self.parent
+        pp = self.parent
 
         get_method = None
-        if hasattr(parent, attr_name):
+        if hasattr(pp, attr_name):
             get_method = getattr
 
-        elif hasattr(parent, '__contains__') and hasattr(parent, '__getitem__'):
-            if attr_name in parent:
-                get_method = getattr(parent.__class__, '__getitem__')
+        elif hasattr(pp, '__contains__') and hasattr(pp, '__getitem__'):
+            if attr_name in pp:
+                get_method = getattr(pp.__class__, '__getitem__')
 
         if get_method is not None:
             self.attributes.append((attr_name, get_method))
-            val = attribute.ensure_type(get_method(parent, attr_name), node)
+            val = attribute.ensure_type(get_method(pp, attr_name), node)
             setattr(obj, attr_name, val)
             return True
 
@@ -47,15 +57,13 @@ class _ParentLink(object):
                 if get_method(parent, attr_name) == getattr(obj, attr_name):
                     represented_attrs.add(attr_name)
                     am_parent = True
-            except:
+            except BaseException:
                 pass
 
         return am_parent
 
 
 class Object(Yamlizable):
-
-    __slots__ = ('__merge_parents', '__attribute_order', '__complete_inheritance')
 
     __merge_parents = None
 
@@ -113,7 +121,8 @@ class Object(Yamlizable):
         key_attribute = cls.attributes.by_name.get(key_name, None)
 
         if key_attribute is None:
-            raise YamlizingError('Error parsing {}, there is no attribute named `{}`'
+            raise YamlizingError('Error parsing {}, there is no attribute '
+                                 'named `{}`'
                                  .format(type(self), key_name), key_node)
 
         setattr(self, key_name, key_attribute.from_yaml(loader, key_node))
@@ -134,7 +143,7 @@ class Object(Yamlizable):
         # node.value is a ordered list of keys and values
         previous_names = set(self.__attribute_order)
         for key_node, val_node in node.value:
-            if key_node.tag == u'tag:yaml.org,2002:merge':
+            if key_node.tag == MERGE_TAG:
                 self.__add_parent(loader, val_node)
                 continue
 
@@ -142,12 +151,16 @@ class Object(Yamlizable):
             attribute = attrs.get(key, None)
 
             if attribute is None:
-                raise YamlizingError('Error parsing {}, found key `{}` but expected any of {}'
-                                     .format(type(self), key, attrs.keys()), node)
+                raise YamlizingError('Error parsing {}, found key `{}` but '
+                                     'expected any of {}'
+                                     .format(type(self), key, attrs.keys()),
+                                     node)
 
             if key in previous_names:
-                raise YamlizingError('Error parsing {}, found duplicate entry for key `{}`'
-                                     .format(type(self), key), key_node)
+                raise YamlizingError('Error parsing {}, found duplicate entry '
+                                     'for key `{}`'
+                                     .format(type(self), key),
+                                     key_node)
 
             value = attribute.from_yaml(loader, val_node)
             self.__attribute_order.append(attribute.name)
@@ -159,7 +172,8 @@ class Object(Yamlizable):
         if self.__merge_parents is None:
             self.__merge_parents = list()
 
-        self.__merge_parents.append(_ParentLink(loader.constructed_objects[parent_node]))
+        self.__merge_parents.append(_ParentLink(
+            loader.constructed_objects[parent_node]))
 
     def __apply_defaults(self, node):
         applied_attrs = set(self.__attribute_order)
@@ -171,24 +185,27 @@ class Object(Yamlizable):
                 continue
 
             # DO NOT make this into a generator!!!!
-            from_parent = any([parent.try_set_attr(self, attr, node) for parent in parents])
+            from_parent = any([parent.try_set_attr(self, attr, node)
+                               for parent in parents])
 
             if not from_parent:
                 if attr.default is not NODEFAULT:
                     setattr(self, attr.name, attr.default)
                 else:
-                    # hold on to a running list so user doesn't need to rerun to find //each// error,
-                    # but can find all of then at once
+                    # hold on to a running list so user doesn't need to rerun
+                    # to find //each// error, but can find all of then at once
                     missing_required_attrs.append(attr.name)
 
         if any(missing_required_attrs):
             raise YamlizingError('Missing {} attributes without default: {}'
-                                 .format(type(self), missing_required_attrs), node)
+                                 .format(type(self), missing_required_attrs),
+                                 node)
 
     @classmethod
     def to_yaml(cls, dumper, self):
         if not isinstance(self, cls):
-            raise YamlizingError('Expected instance of {}, got: {}'.format(cls, self))
+            raise YamlizingError('Expected instance of {}, got: {}'
+                                 .format(cls, self))
 
         if self in dumper.represented_objects:
             return dumper.represented_objects[self]
@@ -200,13 +217,15 @@ class Object(Yamlizable):
     @classmethod
     def to_yaml_key_val(cls, dumper, self, key_name):
         if not isinstance(self, cls):
-            raise YamlizingError('Expected instance of {}, got: {}'.format(cls, self))
+            raise YamlizingError('Expected instance of {}, got: {}'
+                                 .format(cls, self))
 
         if self in dumper.represented_objects:
             return dumper.represented_objects[self]
 
         key_attribute = cls.attributes.by_name[key_name]
-        list_key_node = key_attribute.to_yaml(dumper, getattr(self, key_name, key_attribute.default))
+        list_key_node = key_attribute.to_yaml(
+            dumper, getattr(self, key_name, key_attribute.default))
 
         node = self.__to_yaml(dumper, key_name)
 
@@ -217,7 +236,8 @@ class Object(Yamlizable):
         parents = []
 
         node_items = []
-        node = ruamel.yaml.MappingNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, node_items)
+        node = ruamel.yaml.MappingNode(
+            ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, node_items)
         self._apply_round_trip_data(node)
         dumper.represented_objects[self] = node
 
@@ -227,17 +247,19 @@ class Object(Yamlizable):
             if self.__complete_inheritance:
                 merge_parent = self.__merge_parents[0]
                 if merge_parent.is_parent(self, dumper, represented_attrs):
-                    if not any(set([attr.name for attr in self.attributes.required]) - represented_attrs):
+                    if not any(self.attributes.required - represented_attrs):
                         del dumper.represented_objects[self]
                         return dumper.represented_objects[merge_parent.parent]
                     else:
-                        node_items.append((ruamel.yaml.ScalarNode(u'tag:yaml.org,2002:merge', '<<'),
-                                           dumper.represented_objects[merge_parent.parent]))
+                        kn = _create_merge_node()
+                        vn = dumper.represented_objects[merge_parent.parent]
+                        node_items.append((kn, vn))
             else:
                 for index, merge_parent in enumerate(self.__merge_parents):
                     if merge_parent.is_parent(self, dumper, represented_attrs):
-                        node_items.append((ruamel.yaml.ScalarNode(u'tag:yaml.org,2002:merge', '<<'),
-                                           dumper.represented_objects[merge_parent.parent]))
+                        kn = _create_merge_node()
+                        vn = dumper.represented_objects[merge_parent.parent]
+                        node_items.append((kn, vn))
                     else:
                         remove_links.append(index)
 
@@ -245,11 +267,11 @@ class Object(Yamlizable):
                     self.__merge_parents.pop(index)
 
         attrs_by_name = self.attributes.by_name
-        attribute_order = self.__attribute_order or []
-        attribute_order += sorted(set(attrs_by_name.keys()) - set(attribute_order))
+        attr_order = self.__attribute_order or []
+        attr_order += sorted(set(attrs_by_name.keys()) - set(attr_order))
         list_key_node = None
 
-        for attr_name in attribute_order:
+        for attr_name in attr_order:
             if attr_name in represented_attrs:
                 continue
 
@@ -285,8 +307,9 @@ class Attribute(object):
     key : str
         name of the attribute within the YAML representation
     type : type or ANY
-        type of the attribute within the Python class. When ``ANY``, the type is
-        a pass-through and whatever YAML determines it should be will be applied.
+        type of the attribute within the Python class. When ``ANY``, the type
+        is a pass-through and whatever YAML determines it should be will be
+        applied.
     default : value or NODEFAULT
         default value if not supplied in YAML. If ``default=NODEFAULT``, then
         the attribute must be supplied.
@@ -297,7 +320,8 @@ class Attribute(object):
     def __init__(self, name, key=None, type=NODEFAULT, default=NODEFAULT):
         self.name = name
         self.key = key or name
-        self.type = Yamlizable.get_yamlizable_type(type) if type != NODEFAULT else Dynamic
+        self.type = Yamlizable.get_yamlizable_type(
+            type) if type != NODEFAULT else Dynamic
         self.default = default
 
     def ensure_type(self, data, node):
@@ -306,13 +330,16 @@ class Attribute(object):
 
         try:
             new_value = self.type(data)
-        except:
+        except BaseException:
             raise YamlizingError('Failed to coerce value `{}` to type `{}`'
                                  .format(data, self.type), node)
 
         if new_value != data:
-            raise YamlizingError('Coerced `{}` to `{}`, but the new value `{}` is not equal to old `{}`.'
-                                 .format(type(data), type(new_value), new_value, data), node)
+            raise YamlizingError('Coerced `{}` to `{}`, but the new value `{}`'
+                                 ' is not equal to old `{}`.'
+                                 .format(type(data), type(new_value),
+                                         new_value, data),
+                                 node)
 
         return new_value
 
@@ -320,7 +347,8 @@ class Attribute(object):
         if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
             return self.type.from_yaml(loader, node)
 
-        # this will happen for something that is not subclass-able, such as bool
+        # this will happen for something that is not subclass-able, such as
+        # bool
         value = loader.construct_object(node, deep=True)
 
         return self.ensure_type(value, node)
@@ -333,11 +361,12 @@ class Attribute(object):
         if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
             return self.type.to_yaml(dumper, data)
 
-        # this will happen for something that is not subclass-able, such as bool
+        # this will happen for something that is not subclass-able, such as
+        # bool
         if not isinstance(data, self.type):
             try:
                 data = self.type(data)
-            except:
+            except BaseException:
                 raise YamlizingError('Failed to coerce value `{}` to type `{}`'
                                      .format(data, self.type))
 
@@ -353,7 +382,8 @@ class AttributeCollection(object):
         self.by_name = dict()
         for item in args:
             if not isinstance(item, Attribute):
-                raise TypeError('Incorrect type {} while initializing AttributeCollection with {}'
+                raise TypeError('Incorrect type {} while initializing '
+                                'AttributeCollection with {}'
                                 .format(type(item), item))
             self.add(item)
 
@@ -362,18 +392,18 @@ class AttributeCollection(object):
 
     @property
     def required(self):
-        return [attr for attr in self if attr.default is NODEFAULT]
+        return {attr.name for attr in self if attr.default is NODEFAULT}
 
     def add(self, attr):
         if attr.key in self.by_key:
-            raise KeyError('AttributeCollection already contains an entry for {}, previously defined: {}'
+            raise KeyError('AttributeCollection already contains an entry for '
+                           '{}, previously defined: {}'
                            .format(attr.key, self.by_key[attr.key]))
 
         if attr.name in self.by_name:
-            raise KeyError('AttributeCollection already contains an entry for {}, previously defined: {}'
+            raise KeyError('AttributeCollection already contains an entry for '
+                           '{}, previously defined: {}'
                            .format(attr.name, self.by_name[attr.name]))
 
         self.by_key[attr.key] = attr
         self.by_name[attr.name] = attr
-
-

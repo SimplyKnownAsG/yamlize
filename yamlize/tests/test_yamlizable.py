@@ -9,7 +9,6 @@ from yamlize import Sequence
 from yamlize import yaml_map
 from yamlize import yaml_keyed_list
 
-# TODO: write default if default, or no? what about writing a comment indicating it is default?
 
 @yamlizable(Attribute(name='name'),
             Attribute(name='age'))
@@ -32,7 +31,9 @@ class TypeCheck(object):
 @yamlizable(Attribute(name='name', type=str))
 class AnimalWithFriend(object):
     pass
-AnimalWithFriend.attributes.add(Attribute(name='friend', type=AnimalWithFriend, default=None))
+AnimalWithFriend.attributes.add(Attribute(name='friend',
+                                          type=AnimalWithFriend,
+                                          default=None))
 
 
 class Test_from_yaml(unittest.TestCase):
@@ -83,7 +84,6 @@ class Test_from_yaml(unittest.TestCase):
         stream = six.StringIO('one: 1\narray: this gets converted to a list')
         with self.assertRaises(YamlizingError):
             TypeCheck.load(stream)
-
 
 
 class Test_to_yaml(unittest.TestCase):
@@ -156,7 +156,9 @@ class Test_two_way(unittest.TestCase):
         class AnimalSequence(Sequence):
             item_type = AnimalWithFriends
 
-        AnimalWithFriends.attributes.add(Attribute(name='friends', type=AnimalSequence, default=None))
+        AnimalWithFriends.attributes.add(Attribute(name='friends',
+                                                   type=AnimalSequence,
+                                                   default=None))
 
         in_stream = six.StringIO('# no friends :(\n'
                                  '- name: Lucy # no friends\n'

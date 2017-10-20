@@ -12,7 +12,8 @@ def yamlizable(*attributes):
     def wrapper(klass):
 
         class wrapped(klass, Object):
-            __doc__ = klass.__doc__ # AttributeError: __doc__ not writable on type
+            # __doc__ must be done here to avoid AttributeError not writable
+            __doc__ = klass.__doc__
 
             attributes = yaml_attributes
 
@@ -29,7 +30,8 @@ def yaml_map(key_type=Dynamic, value_type=Dynamic):
     def wrapper(klass):
 
         class wrapped(klass, Map):
-            __doc__ = klass.__doc__ # AttributeError: __doc__ not writable on type
+            # __doc__ must be done here to avoid AttributeError not writable
+            __doc__ = klass.__doc__
 
         wrapped.key_type = Yamlizable.get_yamlizable_type(key_type)
         wrapped.value_type = Yamlizable.get_yamlizable_type(value_type)
@@ -46,7 +48,8 @@ def yaml_keyed_list(key_name, item_type):
     def wrapper(klass):
 
         class wrapped(klass, KeyedList):
-            __doc__ = klass.__doc__ # AttributeError: __doc__ not writable on type
+            # __doc__ must be done here to avoid AttributeError not writable
+            __doc__ = klass.__doc__
 
         wrapped.key_name = key_name
         wrapped.item_type = Yamlizable.get_yamlizable_type(item_type)
@@ -56,4 +59,3 @@ def yaml_keyed_list(key_name, item_type):
         return wrapped
 
     return wrapper
-

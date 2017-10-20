@@ -18,10 +18,12 @@ class Animal(object):
         self.name = name
         self.age = age
 
+
 @yaml_map(key_type=str,
           value_type=Animal)
 class Kennel(object):
     pass
+
 
 kennel_yaml = """
 Lucy:
@@ -32,10 +34,12 @@ Possum:
     age: 5
 """
 
+
 @yaml_keyed_list(key_name='name',
                  item_type=Animal)
 class NamedKennel(object):
     pass
+
 
 named_kennel_yaml = """
 Lucy:
@@ -43,7 +47,6 @@ Lucy:
 Possum:
     age: 5
 """
-
 
 
 class Test_NamedKennel(unittest.TestCase):
@@ -69,7 +72,8 @@ class Test_from_yaml(unittest.TestCase):
     def test_attrs_applied(self):
         # once with normal dictionary
         # once with KeyedList
-        for kennel in (Kennel.load(kennel_yaml), NamedKennel.load(named_kennel_yaml)):
+        for kennel in (Kennel.load(kennel_yaml),
+                       NamedKennel.load(named_kennel_yaml)):
             poss = kennel['Possum']
             self.assertTrue('Possum', poss.name)
             self.assertTrue(5, poss.age)
@@ -233,8 +237,6 @@ T: {Maggie: {age: 2}}
         self.assertEqual(Test_two_way.pet_map3, actual)
 
 
-
 if __name__ == '__main__':
     unittest.main()
-
 

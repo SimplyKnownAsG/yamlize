@@ -55,13 +55,16 @@ class Sequence(Yamlizable):
     @classmethod
     def to_yaml(cls, dumper, self):
         if not isinstance(self, cls):
-            raise YamlizingError('Expected instance of {}, got: {}'.format(cls, self))
+            raise YamlizingError(
+                'Expected instance of {}, got: {}'.format(
+                    cls, self))
 
         if self in dumper.represented_objects:
             return dumper.represented_objects[self]
 
         items = []
-        node = ruamel.yaml.SequenceNode(ruamel.yaml.resolver.BaseResolver.DEFAULT_SEQUENCE_TAG, items)
+        node = ruamel.yaml.SequenceNode(
+            ruamel.yaml.resolver.BaseResolver.DEFAULT_SEQUENCE_TAG, items)
         self._apply_round_trip_data(node)
         dumper.represented_objects[self] = node
 
@@ -70,5 +73,3 @@ class Sequence(Yamlizable):
             items.append(item_node)
 
         return node
-
-

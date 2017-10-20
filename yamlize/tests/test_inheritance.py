@@ -1,7 +1,11 @@
 
 import unittest
 
-from yamlize import yamlizable, Attribute, yaml_keyed_list, Sequence, YamlizingError
+from yamlize import yamlizable
+from yamlize import Attribute
+from yamlize import yaml_keyed_list
+from yamlize import Sequence
+from yamlize import YamlizingError
 
 
 @yamlizable(Attribute(name='name', type=str),
@@ -11,8 +15,10 @@ class Animal(object):
         self.name = name
         self.age = age
 
+
 class AnimalList(Sequence):
     item_type = Animal
+
 
 @yaml_keyed_list(key_name='name',
                  item_type=Animal)
@@ -26,6 +32,7 @@ class NamedKennel(object):
             Attribute(name='float_attr', type=float))
 class Thing(object):
     pass
+
 
 @yaml_keyed_list(key_name='name', item_type=Thing)
 class Things(object):
@@ -111,7 +118,8 @@ thing2: *thing1
         self.assertIn('thing1', things)
         self.assertIn('thing2', things)
         actual = Things.dump(things).strip()
-        self.assertEqual(TestInheritance.keyed_list_complete_inheritance, actual)
+        self.assertEqual(TestInheritance.keyed_list_complete_inheritance,
+                         actual)
 
     list_complete_inheritance = """
 - &lucy
