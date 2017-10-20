@@ -151,3 +151,4 @@ class KeyedList(__MapBase):
                     dumper, val, cls.key_name))
 
         return node
+

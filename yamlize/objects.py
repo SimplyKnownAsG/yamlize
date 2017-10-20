@@ -13,7 +13,7 @@ def _create_merge_node():
     return ruamel.yaml.ScalarNode(MERGE_TAG, '<<')
 
 
-class _ParentLink(object):
+class _AliasLink(object):
 
     __slots__ = ('parent', 'attributes')
 
@@ -38,7 +38,7 @@ class _ParentLink(object):
                 get_method = getattr(pp.__class__, '__getitem__')
 
         if get_method is not None:
-            self.attributes.append((attr_name, get_method))
+            self.attributes.append((attribute, get_method))
             val = attribute.ensure_type(get_method(pp, attr_name), node)
             setattr(obj, attr_name, val)
             return True
@@ -47,15 +47,17 @@ class _ParentLink(object):
 
     def is_parent(self, obj, representer, represented_attrs):
         '''Returns a list of possibly inherited attribute names.'''
-        am_parent = False
         parent = self.parent
+
         if parent not in representer.represented_objects:
             return False
 
-        for attr_name, get_method in self.attributes:
+        am_parent = False
+
+        for attr, get_method in self.attributes:
             try:
-                if get_method(parent, attr_name) == getattr(obj, attr_name):
-                    represented_attrs.add(attr_name)
+                if get_method(parent, attr.name) == attr.get_value(obj):
+                    represented_attrs.add(attr)
                     am_parent = True
             except BaseException:
                 pass
@@ -125,8 +127,8 @@ class Object(Yamlizable):
                                  'named `{}`'
                                  .format(type(self), key_name), key_node)
 
-        setattr(self, key_name, key_attribute.from_yaml(loader, key_node))
-        self.__attribute_order.append(key_name)
+        key_attribute.from_yaml(self, loader, key_node)
+        self.__attribute_order.append(key_attribute)
 
         if not complete_inheritance:
             self.__from_node(loader, val_node)
@@ -139,32 +141,24 @@ class Object(Yamlizable):
         return self
 
     def __from_node(self, loader, node):
-        attrs = self.attributes.by_key
+        attrs = self.attributes
         # node.value is a ordered list of keys and values
-        previous_names = set(self.__attribute_order)
+        previous_attrs = set(self.__attribute_order)
         for key_node, val_node in node.value:
             if key_node.tag == MERGE_TAG:
                 self.__add_parent(loader, val_node)
                 continue
 
-            key = loader.construct_object(key_node)
-            attribute = attrs.get(key, None)
+            attribute = attrs.from_yaml(self, loader, key_node, val_node)
 
-            if attribute is None:
-                raise YamlizingError('Error parsing {}, found key `{}` but '
-                                     'expected any of {}'
-                                     .format(type(self), key, attrs.keys()),
-                                     node)
-
-            if key in previous_names:
+            if attribute in previous_attrs:
                 raise YamlizingError('Error parsing {}, found duplicate entry '
                                      'for key `{}`'
-                                     .format(type(self), key),
+                                     .format(type(self), attribute.key),
                                      key_node)
 
-            value = attribute.from_yaml(loader, val_node)
-            self.__attribute_order.append(attribute.name)
-            setattr(self, attribute.name, value)
+            previous_attrs.add(attribute)
+            self.__attribute_order.append(attribute)
 
         self.__apply_defaults(node)
 
@@ -172,7 +166,7 @@ class Object(Yamlizable):
         if self.__merge_parents is None:
             self.__merge_parents = list()
 
-        self.__merge_parents.append(_ParentLink(
+        self.__merge_parents.append(_AliasLink(
             loader.constructed_objects[parent_node]))
 
     def __apply_defaults(self, node):
@@ -180,21 +174,21 @@ class Object(Yamlizable):
         missing_required_attrs = []
         parents = self.__merge_parents or []
 
-        for attr in self.attributes:
-            if attr.name in applied_attrs:
+        for attribute in self.attributes:
+            if attribute in applied_attrs:
                 continue
 
             # DO NOT make this into a generator!!!!
-            from_parent = any([parent.try_set_attr(self, attr, node)
+            from_parent = any([parent.try_set_attr(self, attribute, node)
                                for parent in parents])
 
             if not from_parent:
-                if attr.has_default:
-                    setattr(self, attr.name, attr.default)
+                if attribute.has_default:
+                    attribute.set_value(self, attribute.default)
                 else:
                     # hold on to a running list so user doesn't need to rerun
                     # to find //each// error, but can find all of then at once
-                    missing_required_attrs.append(attr.name)
+                    missing_required_attrs.append(attribute.name)
 
         if any(missing_required_attrs):
             raise YamlizingError('Missing {} attributes without default: {}'
@@ -224,10 +218,9 @@ class Object(Yamlizable):
             return dumper.represented_objects[self]
 
         key_attribute = cls.attributes.by_name[key_name]
-        list_key_node = key_attribute.to_yaml(
-            dumper, getattr(self, key_name, key_attribute.default))
+        list_key_node = key_attribute.to_yaml(self, dumper)
 
-        node = self.__to_yaml(dumper, key_name)
+        node = self.__to_yaml(dumper, key_attribute)
 
         return list_key_node, node
 
@@ -245,7 +238,7 @@ class Object(Yamlizable):
             if self.__complete_inheritance:
                 merge_parent = self.__merge_parents[0]
                 if merge_parent.is_parent(self, dumper, represented_attrs):
-                    if not any(self.attributes.required_names - represented_attrs):
+                    if not any(set(self.attributes.required) - represented_attrs):
                         del dumper.represented_objects[self]
                         return dumper.represented_objects[merge_parent.parent]
                     else:
@@ -268,16 +261,14 @@ class Object(Yamlizable):
 
         attrs_by_name = self.attributes.by_name
         attr_order = self.__attribute_order or []
-        attr_order += sorted(set(attrs_by_name.keys()) - set(attr_order))
-        list_key_node = None
+        # add the rest in order of definition
+        attr_order += [attr for attr in self.attributes if attr not in attr_order]
 
-        for attr_name in attr_order:
-            if attr_name in represented_attrs:
+        for attribute in attr_order:
+            if attribute in represented_attrs:
                 continue
 
-            attribute = attrs_by_name[attr_name]
-            attr_value = getattr(self, attr_name, attribute.default)
-            val_node = attribute.to_yaml(dumper, attr_value)
+            val_node = attribute.to_yaml(self, dumper)
 
             # short circuit when the value is the default
             if val_node is None:

@@ -2,7 +2,7 @@ import inspect
 
 from yamlize.yamlizable import Dynamic
 from yamlize.yamlizable import Yamlizable
-from yamlize.yamlizingerror import YamlizingError
+from yamlize.yamlizing_error import YamlizingError
 
 
 class NODEFAULT:
@@ -71,17 +71,20 @@ class Attribute(object):
 
         return new_value
 
-    def from_yaml(self, loader, node):
+    def from_yaml(self, obj, loader, node):
         if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
-            return self.type.from_yaml(loader, node)
+            value = self.type.from_yaml(loader, node)
 
-        # this will happen for something that is not subclass-able, such as
-        # bool
-        value = loader.construct_object(node, deep=True)
+        else:
+            # this will happen for something that is not subclass-able (bool)
+            value = loader.construct_object(node, deep=True)
+            value = self.ensure_type(value, node)
 
-        return self.ensure_type(value, node)
+        self.set_value(obj, value)
 
-    def to_yaml(self, dumper, data):
+    def to_yaml(self, obj, dumper):
+        data = self.get_value(obj)
+
         if data == self.default and data is not NODEFAULT:
             # short circuit, don't write out default data
             return
@@ -89,8 +92,7 @@ class Attribute(object):
         if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
             return self.type.to_yaml(dumper, data)
 
-        # this will happen for something that is not subclass-able, such as
-        # bool
+        # this will happen for something that is not subclass-able (bool)
         if not isinstance(data, self.type):
             try:
                 data = self.type(data)
@@ -100,4 +102,15 @@ class Attribute(object):
 
         return dumper.represent_data(data)
 
+    def get_value(self, obj):
+        result = getattr(obj, self.name, self.default)
+
+        if result is NODEFAULT:
+            raise YamlizingError('Attribute `{}` was not defined on `{}`'
+                                 .format(self.name, obj))
+
+        return result
+
+    def set_value(self, obj, value):
+        setattr(obj, self.name, value)
 

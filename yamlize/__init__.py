@@ -1,4 +1,4 @@
-from yamlize.yamlizingerror import YamlizingError
+from yamlize.yamlizing_error import YamlizingError
 from yamlize.attributes import Attribute
 from yamlize.yamlizable import Dynamic
 
