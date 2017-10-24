@@ -98,35 +98,34 @@ class Dynamic(Yamlizable):
 
     __types = dict()
 
-    def __new__(cls, type_):
+    def __new__(cls, value):
+        type_ = type(value)
+
         if type_ not in cls.__types:
             # attrs = {'load': Yamlizable.load, 'dump': Yamlizable.dump,
             cls.__types[type_] = type(
                 'DynamicYamlizable' + type_.__name__, (type_, Dynamic), {})
             cls.__types[type_].__type = type_
 
-        # gets called to create a new
-        return cls.__types[type_]
+        return cls.__types[type_](value)
 
     @classmethod
     def from_yaml(cls, loader, node):
         data = loader.construct_object(node, deep=True)
-        new_type = Dynamic(type(data))
 
-        if not isinstance(data, new_type):
-            try:
-                data = new_type(data)  # to coerce to correct type
-                data._set_round_trip_data(node)
-            except BaseException:
-                # ok, we couldn't coerce the type, but whatev's, it's dynamic!
-                pass
+        try:
+            data = Dynamic(data)
+            data._set_round_trip_data(node)
+        except BaseException:
+            # ok, we couldn't coerce the type, but whatev's, it's dynamic!
+            pass
 
         return data
 
     @classmethod
     def to_yaml(cls, dumper, self):
         if isinstance(self, Dynamic):
-            node = dumper.yaml_representers[cls.__type](dumper, self)
+            node = dumper.yaml_representers[self.__type](dumper, self)
             self._apply_round_trip_data(node)
         elif isinstance(self, Yamlizable):
             # infinite recursion if checked first
@@ -185,3 +184,4 @@ class Strong(Yamlizable):
             self._apply_round_trip_data(node)
 
         return node
+

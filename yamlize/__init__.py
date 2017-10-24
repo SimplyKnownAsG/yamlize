@@ -35,17 +35,24 @@ A more logical, less fun, alias for `yamlizable`.
 
 
 def yaml_map(key_type, value_type, *attributes):
+    from yamlize.attribute_collection import AttributeItemCollection
     from yamlize.yamlizable import Yamlizable
     from yamlize.maps import Map
+
+    yaml_attributes = AttributeItemCollection(
+        Yamlizable.get_yamlizable_type(key_type),
+        Yamlizable.get_yamlizable_type(value_type),
+        *attributes
+    )
 
     def wrapper(klass):
 
         class wrapped(klass, Map):
+
             # __doc__ must be done here to avoid AttributeError not writable
             __doc__ = klass.__doc__
 
-        wrapped.key_type = Yamlizable.get_yamlizable_type(key_type)
-        wrapped.value_type = Yamlizable.get_yamlizable_type(value_type)
+        wrapped.attributes = yaml_attributes
         wrapped.__name__ = klass.__name__
         wrapped.__module__ = klass.__module__
 

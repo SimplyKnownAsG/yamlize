@@ -151,6 +151,9 @@ class Object(Yamlizable):
 
             attribute = attrs.from_yaml(self, loader, key_node, val_node)
 
+            if attribute is None:
+                continue
+
             if attribute in previous_attrs:
                 raise YamlizingError('Error parsing {}, found duplicate entry '
                                      'for key `{}`'
@@ -218,11 +221,12 @@ class Object(Yamlizable):
             return dumper.represented_objects[self]
 
         key_attribute = cls.attributes.by_name[key_name]
-        list_key_node = key_attribute.to_yaml(self, dumper)
+        items = []
+        key_attribute.to_yaml(self, dumper, items)
 
         node = self.__to_yaml(dumper, key_attribute)
 
-        return list_key_node, node
+        return items[0][1], node
 
     def __to_yaml(self, dumper, skip_attr=None):
         represented_attrs = set([skip_attr] * (skip_attr is not None))
@@ -259,24 +263,16 @@ class Object(Yamlizable):
                 for index in reversed(remove_links):
                     self.__merge_parents.pop(index)
 
-        attrs_by_name = self.attributes.by_name
-        attr_order = self.__attribute_order or []
-        # add the rest in order of definition
-        attr_order += [attr for attr in self.attributes if attr not in attr_order]
+        attr_order = self.attributes.yaml_attribute_order(
+            self,
+            self.__attribute_order or []
+        )
 
         for attribute in attr_order:
             if attribute in represented_attrs:
                 continue
 
-            val_node = attribute.to_yaml(self, dumper)
-
-            # short circuit when the value is the default
-            if val_node is None:
-                continue
-
-            key_node = dumper.represent_data(attribute.key)
-
-            node_items.append((key_node, val_node))
+            attribute.to_yaml(self, dumper, node_items)
 
         return node
 

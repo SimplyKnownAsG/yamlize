@@ -82,7 +82,7 @@ class Attribute(object):
 
         self.set_value(obj, value)
 
-    def to_yaml(self, obj, dumper):
+    def to_yaml(self, obj, dumper, node_items):
         data = self.get_value(obj)
 
         if data == self.default and data is not NODEFAULT:
@@ -90,17 +90,23 @@ class Attribute(object):
             return
 
         if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
-            return self.type.to_yaml(dumper, data)
+            val_node = self.type.to_yaml(dumper, data)
 
         # this will happen for something that is not subclass-able (bool)
-        if not isinstance(data, self.type):
+        elif not isinstance(data, self.type):
             try:
                 data = self.type(data)
             except BaseException:
                 raise YamlizingError('Failed to coerce value `{}` to type `{}`'
                                      .format(data, self.type))
 
-        return dumper.represent_data(data)
+            val_node = dumper.represent_data(data)
+
+        key_node = self._represent_key(dumper)
+        node_items.append((key_node, val_node))
+
+    def _represent_key(self, dumper):
+        return dumper.represent_data(self.key)
 
     def get_value(self, obj):
         result = getattr(obj, self.name, self.default)
@@ -113,4 +119,38 @@ class Attribute(object):
 
     def set_value(self, obj, value):
         setattr(obj, self.name, value)
+
+
+class AttributeItem(Attribute):
+    """
+    Represents a key of a dictionary, and a key/value pair in YAML.
+
+    This should only be used temporarily.
+    """
+
+    __slots__ = ('key_type')
+
+    def __init__(self, key, key_type, val_type):
+        # below will store the key in the name
+        Attribute.__init__(self, key, type=val_type)
+        self.key_type = key_type
+
+    def _represent_key(self, dumper):
+        # we stored the actual key in the self.name on __init__
+        return self.key_type.to_yaml(dumper, self.name)
+
+    def get_value(self, obj):
+        if self.name in obj:
+            result = obj[self.name]
+        else:
+            result = default
+
+        if result is NODEFAULT:
+            raise YamlizingError('Attribute `{}` was not defined on `{}`'
+                                 .format(self.name, obj))
+
+        return result
+
+    def set_value(self, obj, value):
+        obj.__setitem__(self.name, value)
 

@@ -236,6 +236,12 @@ T: {Maggie: {age: 2}}
         actual = PetMap.dump(peeps).strip()
         self.assertEqual(Test_two_way.pet_map3, actual)
 
+    map_with_attribute = '''
+name: blt
+meat: bacon
+cheese: Gorgonzola
+'''.strip()
+
     def test_map_with_attribute(self):
         @yaml_map(str,
                   Dynamic,
@@ -243,7 +249,7 @@ T: {Maggie: {age: 2}}
         class NamedMap(object):
             pass
 
-        blt = NamedMap.load('{name: blt, meat: bacon, cheese: Gorgonzola}')
+        blt = NamedMap.load(self.__class__.map_with_attribute)
         self.assertNotIn('name', blt)
         self.assertEqual('blt', blt.name)
         self.assertFalse(hasattr(blt, 'meat'))
@@ -251,12 +257,46 @@ T: {Maggie: {age: 2}}
         self.assertEqual('bacon', blt['meat'])
         self.assertEqual('Gorgonzola', blt['cheese'])
 
-        # @yaml_keyed_list(key_name='name',
-        #                  item_type=NamedMap)
+        actual = NamedMap.dump(blt).strip()
+        self.assertEqual(self.__class__.map_with_attribute, actual)
 
-        # things = CThings.load(TestSubclassing.multiple_merge)
-        # actual = CThings.dump(things).strip()
-        # self.assertEqual(TestSubclassing.multiple_merge, actual)
+    menu = '''
+blt:
+  fruit: tomato
+  veggie: lettuce
+  meat: bacon
+  cheese: Gorgonzola
+grilled cheese:
+  cheese: American
+  bread: French
+  butter: true
+'''.strip()
+
+    def test_keyed_list_and_map_with_attribute(self):
+        @yaml_map(str,
+                  Dynamic,
+                  Attribute(name='name', type=str))
+        class MenuItem(object):
+            pass
+
+        @yaml_keyed_list(key_name='name', item_type=MenuItem)
+        class Menu(object):
+            pass
+
+        menu = Menu.load(self.__class__.menu)
+        blt = menu['blt']
+        self.assertNotIn('name', blt)
+        self.assertEqual('blt', blt.name)
+        self.assertFalse(hasattr(blt, 'meat'))
+        self.assertFalse(hasattr(blt, 'cheese'))
+        self.assertEqual('bacon', blt['meat'])
+        self.assertEqual('Gorgonzola', blt['cheese'])
+
+        gc = menu['grilled cheese']
+        self.assertEqual(True, gc['butter'])
+
+        actual = Menu.dump(menu).strip()
+        self.assertEqual(self.__class__.menu, actual)
 
 
 if __name__ == '__main__':
