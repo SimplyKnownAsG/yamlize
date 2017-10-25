@@ -1,5 +1,6 @@
 import ruamel.yaml
 
+from yamlize.yamlizing_error import YamlizingError
 from yamlize.yamlizable import Yamlizable, Dynamic
 
 

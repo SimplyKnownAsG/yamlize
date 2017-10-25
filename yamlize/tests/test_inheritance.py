@@ -122,6 +122,15 @@ thing2: *thing1
         self.assertEqual(TestMergeAndAnchor.keyed_list_complete_inheritance,
                          actual)
 
+    def test_yaml_keyed_complete_inheritance_modified(self):
+        things = Things.load(TestMergeAndAnchor.keyed_list_complete_inheritance)
+        self.assertIn('thing1', things)
+        self.assertIn('thing2', things)
+        thing2 = things['thing2']
+        thing2.int_attr = 19
+        actual = Things.dump(things).strip()
+        self.assertIn('int_attr: 19', actual)
+
     list_from_alias = """
 - &lucy
   name: Lucy
