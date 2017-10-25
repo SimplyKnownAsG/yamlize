@@ -1,4 +1,3 @@
-
 import unittest
 
 from yamlize import yamlizable
@@ -167,6 +166,7 @@ thing3:
 
         things = CThings.load(TestSubclassing.multiple_merge)
         actual = CThings.dump(things).strip()
+        self.assertEqual('an actual string', things['thing3'].str_attr)
         self.assertEqual(TestSubclassing.multiple_merge, actual)
 
 

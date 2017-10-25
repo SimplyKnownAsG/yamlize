@@ -1,6 +1,6 @@
 
 from yamlize.yamlizing_error import YamlizingError
-from yamlize.attributes import Attribute, AttributeItem
+from yamlize.attributes import Attribute, MapItem, KeyedListItem
 
 
 class AttributeCollection(object):
@@ -72,7 +72,7 @@ class AttributeCollection(object):
         return attr_order + new_attrs
 
 
-class AttributeItemCollection(AttributeCollection):
+class AttributeAndMapItemCollection(AttributeCollection):
 
     __slots__ = ('key_type', 'value_type')
 
@@ -94,6 +94,8 @@ class AttributeItemCollection(AttributeCollection):
         if attribute is not None:
             attribute.from_yaml(obj, loader, val_node)
         else:
+            # the key_node will point to our object
+            del loader.constructed_objects[key_node]
             key = self.key_type.from_yaml(loader, key_node)
             val = self.value_type.from_yaml(loader, val_node)
             obj.__setitem__(key, val)
@@ -109,7 +111,51 @@ class AttributeItemCollection(AttributeCollection):
 
         for item_key in obj.keys():
             attr_order.append(
-                AttributeItem(item_key, self.key_type, self.value_type)
+                MapItem(item_key, self.key_type, self.value_type)
+            )
+
+        return attr_order
+
+
+class KeyedListItemCollection(AttributeCollection):
+
+    __slots__ = ('key_name', 'item_type')
+
+    def __init__(self, key_name, item_type, *args, **kwargs):
+        AttributeCollection.__init__(self, *args, **kwargs)
+
+        self.key_name = key_name
+        self.item_type = item_type
+
+    def from_yaml(self, obj, loader, key_node, val_node):
+        """
+        returns: Attribute that was applied, or None.
+
+        Raises an exception if there was actually a problem.
+        """
+        key = loader.construct_object(key_node)
+        attribute = self.by_key.get(key, None)
+
+        if attribute is not None:
+            attribute.from_yaml(obj, loader, val_node)
+        else:
+            # the key_node will point to our object
+            del loader.constructed_objects[key_node]
+            val = self.item_type.from_yaml_key_val(loader, key_node, val_node, self.key_name)
+            obj[getattr(val, self.key_name)] = val
+
+        return attribute  # could be None, and that is fine
+
+    def yaml_attribute_order(self, obj, attr_order):
+        """
+        returns: Attribute that was applied
+        """
+        attr_order = AttributeCollection.yaml_attribute_order(self, obj,
+                                                              attr_order)
+
+        for item_key in obj.keys():
+            attr_order.append(
+                KeyedListItem(self.key_name, self.item_type, item_key)
             )
 
         return attr_order

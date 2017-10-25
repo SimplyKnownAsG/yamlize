@@ -37,6 +37,7 @@ pip-delete-this-directory.txt
 
 # Editor things
 *.swp
+.vscode
 
 # Unit test / coverage reports
 htmlcov/

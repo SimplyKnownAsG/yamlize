@@ -21,26 +21,20 @@ class _AliasLink(object):
         self.parent = parent
         self.attributes = []
 
+    def __repr__(self):
+        return '<AliasLink to {}>'.format(self.parent)
+
     def try_set_attr(self, obj, attribute, node):
         '''
         Attempts to set obj attribute from parent, returns True if successful,
         otherwise False.
         '''
-        attr_name = attribute.name
-        pp = self.parent
-
-        get_method = None
-        if hasattr(pp, attr_name):
-            get_method = getattr
-
-        elif hasattr(pp, '__contains__') and hasattr(pp, '__getitem__'):
-            if attr_name in pp:
-                get_method = getattr(pp.__class__, '__getitem__')
+        get_method = attribute.get_value
 
         if get_method is not None:
             self.attributes.append((attribute, get_method))
-            val = attribute.ensure_type(get_method(pp, attr_name), node)
-            setattr(obj, attr_name, val)
+            val = get_method(self.parent)
+            attribute.set_value(obj, val)
             return True
 
         return False
@@ -56,7 +50,7 @@ class _AliasLink(object):
 
         for attr, get_method in self.attributes:
             try:
-                if get_method(parent, attr.name) == attr.get_value(obj):
+                if get_method(parent) == attr.get_value(obj):
                     represented_attrs.add(attr)
                     am_parent = True
             except BaseException:
@@ -128,15 +122,13 @@ class Object(Yamlizable):
                                  .format(type(self), key_name), key_node)
 
         key_attribute.from_yaml(self, loader, key_node)
+        # loader.constructed_objects[key_node] = self
         self.__attribute_order.append(key_attribute)
 
         if not complete_inheritance:
             self.__from_node(loader, val_node)
         else:
             self.__apply_defaults(key_node)
-
-        # need to do this last for some reason
-        loader.constructed_objects[key_node] = self
 
         return self
 
@@ -174,24 +166,40 @@ class Object(Yamlizable):
 
     def __apply_defaults(self, node):
         applied_attrs = set(self.__attribute_order)
-        missing_required_attrs = []
-        parents = self.__merge_parents or []
+        missing_required_attrs = self.attributes.required - applied_attrs
+        links = self.__merge_parents or []
+
+        # using a separate set allows us to inherit the last value from
+        # multiple parents
+        inherited_attrs = set()
+
+        for link in links:
+            # TODO: why does this happen? inherit from Dynamic?
+            lp = link.parent
+            if not hasattr(lp, 'attributes'):
+                continue
+
+            for attribute in link.parent.attributes.yaml_attribute_order(link.parent, []):
+                if attribute in applied_attrs:
+                    continue
+
+                if link.try_set_attr(self, attribute, node):
+                    inherited_attrs.add(attribute)
+
+        # now apply defaults, where available
+        applied_attrs |= inherited_attrs
+        missing_required_attrs = list()
 
         for attribute in self.attributes:
             if attribute in applied_attrs:
                 continue
 
-            # DO NOT make this into a generator!!!!
-            from_parent = any([parent.try_set_attr(self, attribute, node)
-                               for parent in parents])
-
-            if not from_parent:
-                if attribute.has_default:
-                    attribute.set_value(self, attribute.default)
-                else:
-                    # hold on to a running list so user doesn't need to rerun
-                    # to find //each// error, but can find all of then at once
-                    missing_required_attrs.append(attribute.name)
+            if attribute.has_default:
+                attribute.set_value(self, attribute.default)
+            else:
+                # hold on to a running list so user doesn't need to rerun
+                # to find //each// error, but can find all of then at once
+                missing_required_attrs.append(attribute.name)
 
         if any(missing_required_attrs):
             raise YamlizingError('Missing {} attributes without default: {}'

@@ -14,6 +14,7 @@ from yamlize import yaml_keyed_list
 @yamlizable(Attribute(name='name', type=str),
             Attribute(name='age', type=int))
 class Animal(object):
+
     def __init__(self, name, age):
         self.name = name
         self.age = age
@@ -209,33 +210,6 @@ T: {pets: {Maggie: {age: 2}}}
         actual = PetMap.dump(peeps).strip()
         self.assertEqual(Test_two_way.pet_map2, actual)
 
-    pet_map3 = """
-G: &lucy_possum
-  Lucy:
-    age: 5
-  Possum:
-    age: 5
-A: *lucy_possum
-J: {Luna: {age: 1}}
-T: {Maggie: {age: 2}}
-""".strip()
-
-    @unittest.skip('TODO')
-    def test_owner3(self):
-        @yamlizable(Attribute(name='name', type=str))
-        class Owner(NamedKennel):
-            pass
-
-        @yaml_keyed_list(key_name='name',
-                         item_type=Owner)
-        class PetMap(object):
-            pass
-
-        peeps = PetMap.load(Test_two_way.pet_map3)
-
-        actual = PetMap.dump(peeps).strip()
-        self.assertEqual(Test_two_way.pet_map3, actual)
-
     map_with_attribute = '''
 name: blt
 meat: bacon
@@ -297,6 +271,76 @@ grilled cheese:
 
         actual = Menu.dump(menu).strip()
         self.assertEqual(self.__class__.menu, actual)
+
+    daily_menu = '''
+day: Monday
+blt:
+  fruit: tomato
+  meat: bacon
+grilled cheese:
+  with: bacon
+'''.strip()
+
+    def test_daily_menu(self):
+        @yaml_map(str,
+                  Dynamic,
+                  Attribute(name='name', type=str))
+        class MenuItem(object):
+            pass
+
+        @yaml_keyed_list('name', MenuItem,
+                         Attribute('day', type=str))
+        class DailyMenu(object):
+            pass
+
+        menu = DailyMenu.load(self.__class__.daily_menu)
+        self.assertEqual('Monday', menu.day)
+        self.assertNotIn('Monday', menu)
+        self.assertIn('blt', menu)
+        self.assertIsInstance(menu['grilled cheese'], MenuItem)
+
+        actual = DailyMenu.dump(menu).strip()
+        self.assertEqual(self.__class__.daily_menu, actual)
+
+    daily_menus = '''
+Monday:
+  blt: &blt
+    fruit: tomato
+    meat: bacon
+  grilled cheese:
+    with butter: true
+Tuesday:
+  blt tuesday: *blt
+  fries:
+    potatoes: from Idaho
+'''.strip()
+
+    def test_daily_menus(self):
+        @yaml_map(str,
+                  Dynamic,
+                  Attribute(name='name', type=str))
+        class MenuItem(object):
+            pass
+
+        @yaml_keyed_list('name', MenuItem,
+                         Attribute('day', type=str))
+        class DailyMenu(object):
+            pass
+
+        @yaml_keyed_list(key_name='day', item_type=DailyMenu)
+        class Menus(object):
+            pass
+
+        menus = Menus.load(self.__class__.daily_menus)
+        self.assertEqual('Monday', menus['Monday'].day)
+        tue_menu = menus['Tuesday']
+        self.assertIsInstance(tue_menu, DailyMenu)
+        self.assertIsInstance(tue_menu['fries'], MenuItem)
+        blt_tue = tue_menu['blt tuesday']
+        self.assertEqual('tomato', blt_tue['fruit'])
+
+        actual = Menus.dump(menus).strip()
+        self.assertEqual(self.__class__.daily_menus, actual)
 
 
 if __name__ == '__main__':

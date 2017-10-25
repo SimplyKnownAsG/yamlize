@@ -6,6 +6,7 @@ from yamlize.yamlizing_error import YamlizingError
 
 
 class NODEFAULT:
+
     def __new__(cls):
         raise NotImplementedError
 
@@ -13,7 +14,46 @@ class NODEFAULT:
         raise NotImplementedError
 
 
-class Attribute(object):
+class _Attribute(object):
+
+    __slots__ = ()
+
+    def __repr__(self):
+        rep = '<{} '.format(self.__class__.__name__)
+
+        for attr_name in self.__class__.__slots__:
+            attr = getattr(self, attr_name)
+            if inspect.isclass(attr):
+                attr = attr.__name__
+            rep += '{}:{} '.format(attr_name, attr)
+
+        return rep + '>'
+
+    @property
+    def has_default(self):
+        raise NotImplementedError
+
+    @property
+    def is_required(self):
+        raise NotImplementedError
+
+    def ensure_type(self, data, node):
+        raise NotImplementedError
+
+    # def from_yaml(self, obj, loader, node):
+    #     raise NotImplementedError
+
+    def to_yaml(self, obj, dumper, node_items):
+        raise NotImplementedError
+
+    def get_value(self, obj):
+        raise NotImplementedError
+
+    def set_value(self, obj, value):
+        raise NotImplementedError
+
+
+class Attribute(_Attribute):
     """
     Represents an attribute of a Python class, and a key/value pair in YAML.
 
@@ -85,7 +125,7 @@ class Attribute(object):
     def to_yaml(self, obj, dumper, node_items):
         data = self.get_value(obj)
 
-        if data == self.default and data is not NODEFAULT:
+        if self.has_default and data == self.default:
             # short circuit, don't write out default data
             return
 
@@ -93,12 +133,13 @@ class Attribute(object):
             val_node = self.type.to_yaml(dumper, data)
 
         # this will happen for something that is not subclass-able (bool)
-        elif not isinstance(data, self.type):
-            try:
-                data = self.type(data)
-            except BaseException:
-                raise YamlizingError('Failed to coerce value `{}` to type `{}`'
-                                     .format(data, self.type))
+        else:
+            if not isinstance(data, self.type):
+                try:
+                    data = self.type(data)
+                except BaseException:
+                    raise YamlizingError('Failed to coerce value `{}` to type `{}`'
+                                         .format(data, self.type))
 
             val_node = dumper.represent_data(data)
 
@@ -121,36 +162,84 @@ class Attribute(object):
         setattr(obj, self.name, value)
 
 
-class AttributeItem(Attribute):
+class MapItem(_Attribute):
     """
     Represents a key of a dictionary, and a key/value pair in YAML.
 
     This should only be used temporarily.
     """
 
-    __slots__ = ('key_type')
+    __slots__ = ('key', 'key_type', 'val_type')
 
     def __init__(self, key, key_type, val_type):
-        # below will store the key in the name
-        Attribute.__init__(self, key, type=val_type)
+        self.key = key
         self.key_type = key_type
+        self.val_type = val_type
 
-    def _represent_key(self, dumper):
-        # we stored the actual key in the self.name on __init__
-        return self.key_type.to_yaml(dumper, self.name)
+    @property
+    def has_default(self):
+        return False
+
+    @property
+    def is_required(self):
+        return False
+
+    def to_yaml(self, obj, dumper, node_items):
+        data = self.get_value(obj)
+
+        if inspect.isclass(self.val_type) and issubclass(self.val_type, Yamlizable):
+            val_node = self.val_type.to_yaml(dumper, data)
+
+        # this will happen for something that is not subclass-able (bool)
+        elif not isinstance(data, self.type):
+            try:
+                data = self.type(data)
+            except BaseException:
+                raise YamlizingError('Failed to coerce value `{}` to type `{}`'
+                                     .format(data, self.type))
+
+            val_node = dumper.represent_data(data)
+
+        key_node = self.key_type.to_yaml(dumper, self.key)
+        node_items.append((key_node, val_node))
 
     def get_value(self, obj):
-        if self.name in obj:
-            result = obj[self.name]
-        else:
-            result = default
-
-        if result is NODEFAULT:
-            raise YamlizingError('Attribute `{}` was not defined on `{}`'
-                                 .format(self.name, obj))
-
-        return result
+        return obj[self.key]
 
     def set_value(self, obj, value):
-        obj.__setitem__(self.name, value)
+        obj[self.key] = value
+
+
+class KeyedListItem(_Attribute):
+    """
+    Represents a key of a dictionary, and a key/value pair in YAML.
+
+    This should only be used temporarily.
+    """
+
+    __slots__ = ('key_name', 'item_type', 'item_key')
+
+    def __init__(self, key_name, item_type, item_key):
+        self.key_name = key_name
+        self.item_type = item_type
+        self.item_key = item_key
+
+    @property
+    def has_default(self):
+        return False
+
+    @property
+    def is_required(self):
+        return False
+
+    def to_yaml(self, obj, dumper, node_items):
+        value = self.get_value(obj)
+        key_node, val_node = self.item_type.to_yaml_key_val(dumper, value, self.key_name)
+        node_items.append((key_node, val_node))
+
+    def get_value(self, obj):
+        return obj[self.item_key]
+
+    def set_value(self, obj, value):
+        obj[self.item_key] = value
 
