@@ -20,7 +20,11 @@ class __MapBase(Object):
         self.__data = OrderedDict(*args, **kwargs)
 
     def __getattr__(self, attr_name):
-        return getattr(self.__data, attr_name)
+        try:
+            return getattr(self.__data, attr_name)
+        except AttributeError:
+            raise AttributeError("'{}' object has no attribute '{}'"
+                                 .format(self.__class__.__name__, attr_name))
 
     def __iter__(self):
         return iter(self.__data)
