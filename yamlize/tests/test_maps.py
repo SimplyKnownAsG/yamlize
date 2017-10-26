@@ -340,6 +340,8 @@ Tuesday:
         self.assertEqual('tomato', blt_tue['fruit'])
 
         actual = Menus.dump(menus).strip()
+        print('`{}`'.format(self.__class__.daily_menus))
+        print('`{}`'.format(actual))
         self.assertEqual(self.__class__.daily_menus, actual)
 
 

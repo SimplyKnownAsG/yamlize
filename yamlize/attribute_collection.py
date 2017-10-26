@@ -71,6 +71,23 @@ class AttributeCollection(object):
 
         return attr_order + new_attrs
 
+    def attr_dump_order(self, obj, attr_order):
+        """
+        returns: Attribute that was applied
+        """
+        new_attrs = []
+
+        for attr in self:
+            if attr.has_default and attr.get_value(obj) == attr.default:
+                if attr in attr_order:
+                    attr_order.remove(attr)
+                continue
+
+            if attr not in attr_order:
+                new_attrs.append(attr)
+
+        return attr_order + new_attrs
+
 
 class AttributeAndMapItemCollection(AttributeCollection):
 
@@ -116,6 +133,20 @@ class AttributeAndMapItemCollection(AttributeCollection):
 
         return attr_order
 
+    def attr_dump_order(self, obj, attr_order):
+        """
+        returns: Attribute that was applied
+        """
+        attr_order = AttributeCollection.attr_dump_order(self, obj,
+                                                         attr_order)
+
+        for item_key in obj.keys():
+            attr_order.append(
+                MapItem(item_key, self.key_type, self.value_type)
+            )
+
+        return attr_order
+
 
 class KeyedListItemCollection(AttributeCollection):
 
@@ -152,6 +183,20 @@ class KeyedListItemCollection(AttributeCollection):
         """
         attr_order = AttributeCollection.yaml_attribute_order(self, obj,
                                                               attr_order)
+
+        for item_key in obj.keys():
+            attr_order.append(
+                KeyedListItem(self.key_name, self.item_type, item_key)
+            )
+
+        return attr_order
+
+    def attr_dump_order(self, obj, attr_order):
+        """
+        returns: Attribute that was applied
+        """
+        attr_order = AttributeCollection.attr_dump_order(self, obj,
+                                                         attr_order)
 
         for item_key in obj.keys():
             attr_order.append(

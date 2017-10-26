@@ -19,15 +19,29 @@ class _Attribute(object):
     __slots__ = ()
 
     def __repr__(self):
-        rep = '<{} '.format(self.__class__.__name__)
+        rep = '<{}'.format(self.__class__.__name__)
 
         for attr_name in self.__class__.__slots__:
             attr = getattr(self, attr_name)
             if inspect.isclass(attr):
                 attr = attr.__name__
-            rep += '{}:{} '.format(attr_name, attr)
+            rep += ' {}:{}'.format(attr_name, attr)
 
         return rep + '>'
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        for attr_name in self.__class__.__slots__:
+            if getattr(self, attr_name) != getattr(other, attr_name):
+                return False
+
+        return True
+
+    def __hash__(self):
+        return sum(hash(getattr(self, attr_name))
+                   for attr_name in self.__class__.__slots__)
 
     @property
     def has_default(self):
@@ -39,9 +53,6 @@ class _Attribute(object):
 
     def ensure_type(self, data, node):
         raise NotImplementedError
-
-    # def from_yaml(self, obj, loader, node):
-    #     raise NotImplementedError
 
     def to_yaml(self, obj, dumper, node_items):
         raise NotImplementedError

@@ -1,4 +1,5 @@
 import unittest
+import re
 
 from yamlize import yamlizable
 from yamlize import Attribute
@@ -129,6 +130,7 @@ thing2: *thing1
         thing2 = things['thing2']
         thing2.int_attr = 19
         actual = Things.dump(things).strip()
+        self.assertIn('<<: *thing1', actual)
         self.assertIn('int_attr: 19', actual)
 
     list_from_alias = """
@@ -177,6 +179,58 @@ thing3:
         actual = CThings.dump(things).strip()
         self.assertEqual('an actual string', things['thing3'].str_attr)
         self.assertEqual(TestSubclassing.multiple_merge, actual)
+
+
+@yamlizable(Attribute('name', type=str),
+            Attribute('req1', type=int),
+            Attribute('opt1', type=str, default=None))
+class ReqOptPair(object):
+    pass
+
+
+@yaml_keyed_list(key_name='name', item_type=ReqOptPair)
+class ReqOpts(object):
+    pass
+
+
+class TestOptionalAttributes(unittest.TestCase):
+
+    inheritance_with_optional = """
+reqonly: &reqonly {req1: 99}
+reqonly2: *reqonly
+reqopt_from_reqonly1: {<<: *reqonly, req1: 14}
+reqopt_from_reqonly2: {<<: *reqonly, opt1: howdy how}
+
+reqopt: &reqopt {req1: 92, opt1: option1}
+reqopt2: *reqopt
+reqopt1_from_reqopt: {<<: *reqopt, req1: 14}
+reqopt2_from_reqopt: {<<: *reqopt, opt1: howdy how}
+""".strip()
+
+    def test_inheritance_with_optional_attributes(self):
+        reqopts = ReqOpts.load(TestOptionalAttributes.inheritance_with_optional)
+        actual = ReqOpts.dump(reqopts).strip()
+        print '`{}`'.format(TestOptionalAttributes.inheritance_with_optional)
+        print '`{}`'.format(actual)
+        self.assertEqual(TestOptionalAttributes.inheritance_with_optional,
+                         actual)
+
+    def test_add_optional(self):
+        reqopts = ReqOpts.load(TestOptionalAttributes.inheritance_with_optional)
+
+        reqonly2 = reqopts['reqonly2']
+        self.assertEqual(None, reqonly2.opt1)
+        reqonly2.opt1 = 'changed'
+        actual = ReqOpts.dump(reqopts).strip()
+        self.assertRegexpMatches(actual, r'reqonly2:[\{\s\r\n]+<<: \*reqonly[,\s\r\n]+opt1: changed', actual)
+
+    def test_del_optional(self):
+        reqopts = ReqOpts.load(TestOptionalAttributes.inheritance_with_optional)
+
+        reqopt = reqopts['reqopt_from_reqonly2']
+        reqopt.opt1 = None # sets to default
+        actual = ReqOpts.dump(reqopts).strip()
+        self.assertRegexpMatches(actual, r'reqopt_from_reqonly2: \*reqonly', actual)
 
 
 if __name__ == '__main__':

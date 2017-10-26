@@ -246,35 +246,28 @@ class Object(Yamlizable):
         self._apply_round_trip_data(node)
         dumper.represented_objects[self] = node
 
-        if self.__merge_parents is not None:
-            if self.__complete_inheritance:
-                merge_parent = self.__merge_parents[0]
-                if merge_parent.is_parent(self, dumper, represented_attrs):
-                    if not any(set(self.attributes.required) - represented_attrs):
-                        del dumper.represented_objects[self]
-                        return dumper.represented_objects[merge_parent.parent]
-                    else:
-                        kn = _create_merge_node()
-                        vn = dumper.represented_objects[merge_parent.parent]
-                        node_items.append((kn, vn))
-            else:
-                remove_links = []
-
-                for index, merge_parent in enumerate(self.__merge_parents):
-                    if merge_parent.is_parent(self, dumper, represented_attrs):
-                        kn = _create_merge_node()
-                        vn = dumper.represented_objects[merge_parent.parent]
-                        node_items.append((kn, vn))
-                    else:
-                        remove_links.append(index)
-
-                for index in reversed(remove_links):
-                    self.__merge_parents.pop(index)
-
-        attr_order = self.attributes.yaml_attribute_order(
+        attr_order = self.attributes.attr_dump_order(
             self,
             self.__attribute_order or []
         )
+
+        if self.__merge_parents is not None:
+            actual_parents = []
+
+            for merge_parent in self.__merge_parents:
+                if merge_parent.is_parent(self, dumper, represented_attrs):
+                    actual_parents.append(merge_parent)
+
+            # this is now *an_alias_to_another_node
+            if len(actual_parents) == 1 and not any(set(attr_order) - represented_attrs):
+                del dumper.represented_objects[self]
+                return dumper.represented_objects[merge_parent.parent]
+
+            # add <<: *merge_parent0, <<: *merge_parent1, ...
+            for merge_parent in actual_parents:
+                kn = _create_merge_node()
+                vn = dumper.represented_objects[merge_parent.parent]
+                node_items.append((kn, vn))
 
         for attribute in attr_order:
             if attribute in represented_attrs:
