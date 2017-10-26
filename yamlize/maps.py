@@ -64,3 +64,6 @@ class KeyedList(__MapBase):
     def add(self, item):
         super(KeyedList, self).__setitem__(getattr(item, self.attributes.key_name), item)
 
+    def __iter__(self):
+        return iter(self.values())
+
