@@ -44,6 +44,9 @@ class __MapBase(Object):
     def __setitem__(self, index, value):
         self.__data[index] = value
 
+    def __contains__(self, index):
+        return index in self.__data
+
     def __delitem__(self, index):
         del self.__data[index]
 
