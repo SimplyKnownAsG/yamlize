@@ -105,3 +105,19 @@ def yaml_list(item_type):
 
     return wrapper
 
+
+@yaml_list(str)
+class StrList(object):
+    pass
+
+
+@yaml_list(float)
+class FloatList(object):
+    pass
+
+
+@yaml_list(int)
+class IntList(object):
+    pass
+
+
