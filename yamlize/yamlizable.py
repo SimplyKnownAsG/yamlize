@@ -159,11 +159,21 @@ class Strong(Yamlizable):
 
         if not isinstance(data, cls):
             try:
-                data = cls(data)  # to coerce to correct type
-                data._set_round_trip_data(node)
+                new_value = cls(data)  # to coerce to correct type
+                new_value._set_round_trip_data(node)
+                loader.constructed_objects[node] = new_value
             except BaseException:
                 raise YamlizingError('Failed to coerce data `{}` to type `{}`'
                                      .format(data, cls))
+
+            if new_value != data:
+                raise YamlizingError(
+                    'Coerced `{}` to `{}`, but the new value `{}`'
+                    ' is not equal to old `{}`.'
+                    .format(type(data), type(new_value), new_value, data),
+                    node)
+
+            data = new_value
 
         return data
 

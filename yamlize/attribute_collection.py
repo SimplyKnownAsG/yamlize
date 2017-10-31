@@ -115,7 +115,12 @@ class AttributeAndMapItemCollection(AttributeCollection):
             del loader.constructed_objects[key_node]
             key = self.key_type.from_yaml(loader, key_node)
             val = self.value_type.from_yaml(loader, val_node)
-            obj.__setitem__(key, val)
+            try:
+                obj.__setitem__(key, val)
+            except Exception as ee:
+                raise YamlizingError(
+                    'Failed to add key `{}` with value `{}`, got: {}'
+                    .format(key, val, ee), key_node)
 
         return attribute  # could be None, and that is fine
 

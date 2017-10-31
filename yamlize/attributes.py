@@ -131,7 +131,12 @@ class Attribute(_Attribute):
             value = loader.construct_object(node, deep=True)
             value = self.ensure_type(value, node)
 
-        self.set_value(obj, value)
+        try:
+            self.set_value(obj, value)
+        except Exception as ee:
+            raise YamlizingError('Failed to assign attribute `{}` to `{}`, '
+                                 'got: {}'
+                                 .format(self.name, value, ee), node)
 
     def to_yaml(self, obj, dumper, node_items):
         data = self.get_value(obj)
