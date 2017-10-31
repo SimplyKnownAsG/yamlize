@@ -149,8 +149,9 @@ class Attribute(_Attribute):
                 try:
                     data = self.type(data)
                 except BaseException:
-                    raise YamlizingError('Failed to coerce value `{}` to type `{}`'
-                                         .format(data, self.type))
+                    raise YamlizingError(
+                        'Failed to coerce value `{}` to type `{}`'
+                        .format(data, self.type))
 
             val_node = dumper.represent_data(data)
 
@@ -198,7 +199,8 @@ class MapItem(_Attribute):
     def to_yaml(self, obj, dumper, node_items):
         data = self.get_value(obj)
 
-        if inspect.isclass(self.val_type) and issubclass(self.val_type, Yamlizable):
+        if inspect.isclass(self.val_type) and issubclass(
+                self.val_type, Yamlizable):
             val_node = self.val_type.to_yaml(dumper, data)
 
         # this will happen for something that is not subclass-able (bool)
@@ -245,7 +247,8 @@ class KeyedListItem(_Attribute):
 
     def to_yaml(self, obj, dumper, node_items):
         value = self.get_value(obj)
-        key_node, val_node = self.item_type.to_yaml_key_val(dumper, value, self.key_name)
+        key_node, val_node = self.item_type.to_yaml_key_val(
+            dumper, value, self.key_name)
         node_items.append((key_node, val_node))
 
     def get_value(self, obj):

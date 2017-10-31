@@ -172,7 +172,12 @@ class KeyedListItemCollection(AttributeCollection):
         else:
             # the key_node will point to our object
             del loader.constructed_objects[key_node]
-            val = self.item_type.from_yaml_key_val(loader, key_node, val_node, self.key_name)
+            val = self.item_type.from_yaml_key_val(
+                loader,
+                key_node,
+                val_node,
+                self.key_name
+            )
             obj[getattr(val, self.key_name)] = val
 
         return attribute  # could be None, and that is fine

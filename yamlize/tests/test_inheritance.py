@@ -210,8 +210,6 @@ reqopt2_from_reqopt: {<<: *reqopt, opt1: howdy how}
     def test_inheritance_with_optional_attributes(self):
         reqopts = ReqOpts.load(TestOptionalAttributes.inheritance_with_optional)
         actual = ReqOpts.dump(reqopts).strip()
-        print '`{}`'.format(TestOptionalAttributes.inheritance_with_optional)
-        print '`{}`'.format(actual)
         self.assertEqual(TestOptionalAttributes.inheritance_with_optional,
                          actual)
 

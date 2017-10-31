@@ -179,7 +179,8 @@ class Object(Yamlizable):
             if not hasattr(lp, 'attributes'):
                 continue
 
-            for attribute in link.parent.attributes.yaml_attribute_order(link.parent, []):
+            for attribute in link.parent.attributes.yaml_attribute_order(
+                    link.parent, []):
                 if attribute in applied_attrs:
                     continue
 
@@ -259,7 +260,8 @@ class Object(Yamlizable):
                     actual_parents.append(merge_parent)
 
             # this is now *an_alias_to_another_node
-            if len(actual_parents) == 1 and not any(set(attr_order) - represented_attrs):
+            if len(actual_parents) == 1 and not any(
+                    set(attr_order) - represented_attrs):
                 del dumper.represented_objects[self]
                 return dumper.represented_objects[merge_parent.parent]
 
