@@ -38,6 +38,9 @@ class __MapBase(Object):
     def __len__(self):
         return len(self.__data)
 
+    def __contains__(self, index):
+        return index in self.__data
+
     def __getitem__(self, index):
         return self.__data[index]
 
