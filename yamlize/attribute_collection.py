@@ -43,7 +43,7 @@ class AttributeCollection(object):
         self.by_name[attr.name] = attr
         self.order.append(attr)
 
-    def from_yaml(self, obj, loader, key_node, val_node):
+    def from_yaml(self, obj, loader, key_node, val_node, round_trip_data):
         """
         returns: Attribute that was applied
         """
@@ -56,7 +56,7 @@ class AttributeCollection(object):
                                  .format(type(obj), key, self.by_key.keys()),
                                  key_node)
 
-        attribute.from_yaml(obj, loader, val_node)
+        attribute.from_yaml(obj, loader, val_node, round_trip_data)
 
         return attribute
 
@@ -99,7 +99,7 @@ class AttributeAndMapItemCollection(AttributeCollection):
         self.key_type = key_type
         self.value_type = value_type
 
-    def from_yaml(self, obj, loader, key_node, val_node):
+    def from_yaml(self, obj, loader, key_node, val_node, round_trip_data):
         """
         returns: Attribute that was applied, or None.
 
@@ -109,12 +109,12 @@ class AttributeAndMapItemCollection(AttributeCollection):
         attribute = self.by_key.get(key, None)
 
         if attribute is not None:
-            attribute.from_yaml(obj, loader, val_node)
+            attribute.from_yaml(obj, loader, val_node, round_trip_data)
         else:
             # the key_node will point to our object
             del loader.constructed_objects[key_node]
-            key = self.key_type.from_yaml(loader, key_node)
-            val = self.value_type.from_yaml(loader, val_node)
+            key = self.key_type.from_yaml(loader, key_node, round_trip_data)
+            val = self.value_type.from_yaml(loader, val_node, round_trip_data)
             try:
                 obj.__setitem__(key, val)
             except Exception as ee:
@@ -163,7 +163,7 @@ class KeyedListItemCollection(AttributeCollection):
         self.key_name = key_name
         self.item_type = item_type
 
-    def from_yaml(self, obj, loader, key_node, val_node):
+    def from_yaml(self, obj, loader, key_node, val_node, round_trip_data):
         """
         returns: Attribute that was applied, or None.
 
@@ -173,7 +173,7 @@ class KeyedListItemCollection(AttributeCollection):
         attribute = self.by_key.get(key, None)
 
         if attribute is not None:
-            attribute.from_yaml(obj, loader, val_node)
+            attribute.from_yaml(obj, loader, val_node, round_trip_data)
         else:
             # the key_node will point to our object
             del loader.constructed_objects[key_node]
@@ -181,7 +181,8 @@ class KeyedListItemCollection(AttributeCollection):
                 loader,
                 key_node,
                 val_node,
-                self.key_name
+                self.key_name,
+                round_trip_data
             )
             obj[getattr(val, self.key_name)] = val
 

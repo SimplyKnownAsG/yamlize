@@ -3,26 +3,42 @@ import six
 import inspect
 
 from yamlize import YamlizingError
-
-
-class _AnchorNode(object):
-
-    __slots__ = ('value', )
-
-    def __init__(self, value):
-        self.value = value
+from .round_trip_data import RoundTripData
 
 
 class Yamlizable(object):
 
-    __round_trip_data = None
+    __slots__ = ()
+
+    def __getstate__(self):
+        if hasattr(self, '__dict__'):
+            d = {}
+            for k, v in self.__dict__.items():
+                d[k] = v
+            return d
+        else:
+            state = []
+            for cls in type(self).__mro__:
+                for attr_name in cls.__slots__:
+                    state.append(getattr(self, attr_name))
+            return tuple(state)
+
+    def __setstate__(self, state):
+        if isinstance(state, dict):
+            self.__dict__.update(state)
+        else:
+            ii = 0
+            for cls in type(self).__mro__:
+                for attr_name in cls.__slots__:
+                    setattr(self, attr_name, state[ii])
+                    ii += 1
 
     @classmethod
     def get_yamlizable_type(cls, type_):
         if issubclass(type_, Yamlizable):
             return type_
         else:
-            return Strong(type_)  # returns a new Strong type
+            return Typed(type_)
 
     @classmethod
     def load(cls, stream, Loader=ruamel.yaml.RoundTripLoader):
@@ -60,109 +76,41 @@ class Yamlizable(object):
 
         return None
 
-    def _set_round_trip_data(self, node):
-        self.__round_trip_data = {}
-
-        for key in dir(node):
-            if key.startswith('__') or key in {'value', 'id'}:
-                continue
-
-            attr = getattr(node, key)
-
-            if callable(attr):
-                continue
-
-            self.__round_trip_data[key] = attr
-
-    def _apply_round_trip_data(self, node):
-        if self.__round_trip_data is None:
-            return
-
-        for key, val in self.__round_trip_data.items():
-            if key == 'anchor':
-                val = _AnchorNode(val)
-            setattr(node, key, val)
-
     @classmethod
-    def from_yaml(cls, loader, node):
+    def from_yaml(cls, loader, node, round_trip_data):
         raise NotImplementedError
 
     @classmethod
-    def to_yaml(cls, dumper, self):
+    def to_yaml(cls, dumper, self, round_trip_data):
         raise NotImplementedError
 
 
-class Dynamic(Yamlizable):
+class Typed(type):
 
-    __type = None
+    __types = {}
 
-    __types = dict()
-
-    def __new__(cls, value):
-        type_ = type(value)
-
-        if type_ not in cls.__types:
-            # attrs = {'load': Yamlizable.load, 'dump': Yamlizable.dump,
-            cls.__types[type_] = type(
-                'DynamicYamlizable' + type_.__name__, (type_, Dynamic), {})
-            cls.__types[type_].__type = type_
-
-        return cls.__types[type_](value)
-
-    @classmethod
-    def from_yaml(cls, loader, node):
-        data = loader.construct_object(node, deep=True)
-
-        try:
-            data = Dynamic(data)
-            data._set_round_trip_data(node)
-        except BaseException:
-            # ok, we couldn't coerce the type, but whatev's, it's dynamic!
-            pass
-
-        return data
-
-    @classmethod
-    def to_yaml(cls, dumper, self):
-        if isinstance(self, Dynamic):
-            node = dumper.yaml_representers[self.__type](dumper, self)
-            self._apply_round_trip_data(node)
-        elif isinstance(self, Yamlizable):
-            # infinite recursion if checked first
-            node = Yamlizable.to_yaml(dumper, self)
-        else:
-            # we've lost round trip data, but that is OK
-            node = dumper.represent_data(self)
-
-        return node
+    def __new__(mcls, type_):
+        if type_ not in mcls.__types:
+            mcls.__types[type_] = type('Yamlizable' + type_.__name__,
+                                       (Strong,), {'_Strong__type': type_})
+        return mcls.__types[type_]
 
 
 class Strong(Yamlizable):
 
     __type = None
 
-    __types = {bool: bool}
-
-    def __new__(cls, type_):
-        if type_ not in cls.__types:
-            # attrs = {'load': Yamlizable.load, 'dump': Yamlizable.dump,
-            cls.__types[type_] = type(
-                'StrongYamlizable' + type_.__name__, (type_, Strong), {})
-            cls.__types[type_].__type = type_
-
-        # gets called to create a new
-        return cls.__types[type_]
-
     @classmethod
-    def from_yaml(cls, loader, node):
+    def from_yaml(cls, loader, node, round_trip_data):
         data = loader.construct_object(node, deep=True)
 
-        if not isinstance(data, cls):
+        if not isinstance(data, cls.__type):
             try:
-                new_value = cls(data)  # to coerce to correct type
-                new_value._set_round_trip_data(node)
-                loader.constructed_objects[node] = new_value
-            except BaseException:
+                new_value = cls.__type(data)  # to coerce to correct type
+                # TODO: round trip data
+                # new_value._set_round_trip_data(node)
+                # loader.constructed_objects[node] = new_value
+            except Exception:
                 raise YamlizingError('Failed to coerce data `{}` to type `{}`'
                                      .format(data, cls))
 
@@ -175,23 +123,22 @@ class Strong(Yamlizable):
 
             data = new_value
 
+        round_trip_data[data] = RoundTripData(node)
         return data
 
     @classmethod
-    def to_yaml(cls, dumper, self):
-        if not isinstance(self, (cls, cls.__type)):
+    def to_yaml(cls, dumper, data, round_trip_data):
+        if not isinstance(data, cls.__type):
             try:
-                self = cls.__type(self)  # to coerce to correct type
+                data = cls.__type(data)  # to coerce to correct type
             except BaseException:
                 raise YamlizingError('Failed to coerce data `{}` to type `{}`'
-                                     .format(self, cls))
+                                     .format(data, cls))
 
-        node = dumper.yaml_representers[cls.__type](dumper, self)
-
-        # it is possible that it is the base type (int, str, etc.) and not
-        # Yamlizable
-        if isinstance(self, Yamlizable):
-            self._apply_round_trip_data(node)
-
+        node = dumper.represent_data(data)
+        round_trip_data[data].apply(node)
         return node
+
+
+Dynamic = Typed(object)
 

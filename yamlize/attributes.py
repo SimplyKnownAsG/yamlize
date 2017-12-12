@@ -122,9 +122,9 @@ class Attribute(_Attribute):
 
         return new_value
 
-    def from_yaml(self, obj, loader, node):
+    def from_yaml(self, obj, loader, node, round_trip_data):
         if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
-            value = self.type.from_yaml(loader, node)
+            value = self.type.from_yaml(loader, node, round_trip_data)
 
         else:
             # this will happen for something that is not subclass-able (bool)
@@ -138,7 +138,7 @@ class Attribute(_Attribute):
                                  'got: {}'
                                  .format(self.name, value, ee), node)
 
-    def to_yaml(self, obj, dumper, node_items):
+    def to_yaml(self, obj, dumper, node_items, round_trip_data):
         data = self.get_value(obj)
 
         if self.has_default and data == self.default:
@@ -146,7 +146,7 @@ class Attribute(_Attribute):
             return
 
         if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
-            val_node = self.type.to_yaml(dumper, data)
+            val_node = self.type.to_yaml(dumper, data, round_trip_data)
 
         # this will happen for something that is not subclass-able (bool)
         else:
@@ -201,12 +201,12 @@ class MapItem(_Attribute):
     def is_required(self):
         return False
 
-    def to_yaml(self, obj, dumper, node_items):
+    def to_yaml(self, obj, dumper, node_items, round_trip_data):
         data = self.get_value(obj)
 
         if inspect.isclass(self.val_type) and issubclass(
                 self.val_type, Yamlizable):
-            val_node = self.val_type.to_yaml(dumper, data)
+            val_node = self.val_type.to_yaml(dumper, data, round_trip_data)
 
         # this will happen for something that is not subclass-able (bool)
         elif not isinstance(data, self.type):
@@ -218,7 +218,7 @@ class MapItem(_Attribute):
 
             val_node = dumper.represent_data(data)
 
-        key_node = self.key_type.to_yaml(dumper, self.key)
+        key_node = self.key_type.to_yaml(dumper, self.key, round_trip_data)
         node_items.append((key_node, val_node))
 
     def get_value(self, obj):
@@ -250,10 +250,10 @@ class KeyedListItem(_Attribute):
     def is_required(self):
         return False
 
-    def to_yaml(self, obj, dumper, node_items):
+    def to_yaml(self, obj, dumper, node_items, round_trip_data):
         value = self.get_value(obj)
         key_node, val_node = self.item_type.to_yaml_key_val(
-            dumper, value, self.key_name)
+            dumper, value, self.key_name, round_trip_data)
         node_items.append((key_node, val_node))
 
     def get_value(self, obj):

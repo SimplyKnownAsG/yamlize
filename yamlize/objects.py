@@ -4,6 +4,7 @@ import ruamel.yaml
 
 from yamlize.yamlizable import Yamlizable, Dynamic
 from yamlize import YamlizingError
+from .round_trip_data import RoundTripData
 
 
 MERGE_TAG = u'tag:yaml.org,2002:merge'
@@ -65,12 +66,21 @@ class Object(Yamlizable):
 
     __complete_inheritance = False
 
-    __attribute_order = None
+    __name_order = None
+
+    __round_trip_data = RoundTripData(None)
 
     attributes = ()
 
+    @property
+    def __attribute_order(self):
+        if self.__name_order is None:
+            return []
+        else:
+            return [self.attributes.by_name[n] for n in self.__name_order]
+
     @classmethod
-    def from_yaml(cls, loader, node):
+    def from_yaml(cls, loader, node, _rtd=None):
         if not isinstance(node, ruamel.yaml.MappingNode):
             raise YamlizingError('Expected a mapping node', node)
 
@@ -78,16 +88,15 @@ class Object(Yamlizable):
             return loader.constructed_objects[node]
 
         self = cls.__new__(cls)
-        self._set_round_trip_data(node)
-        self.__attribute_order = []
+        self.__round_trip_data = RoundTripData(node)
+        self.__name_order = []
         loader.constructed_objects[node] = self
-
         self.__from_node(loader, node)
 
         return self
 
     @classmethod
-    def from_yaml_key_val(cls, loader, key_node, val_node, key_name):
+    def from_yaml_key_val(cls, loader, key_node, val_node, key_name, _rtd=None):
         complete_inheritance = False
 
         if val_node in loader.constructed_objects:
@@ -104,11 +113,11 @@ class Object(Yamlizable):
 
         attrs = cls.attributes.by_key
         self = cls.__new__(cls)
-        self.__attribute_order = []
+        self.__name_order = []
 
         if not complete_inheritance:
             # val_node should point to original object
-            self._set_round_trip_data(val_node)
+            self.__round_trip_data = RoundTripData(val_node)
             loader.constructed_objects[val_node] = self
         else:
             self.__complete_inheritance = True
@@ -121,9 +130,9 @@ class Object(Yamlizable):
                                  'named `{}`'
                                  .format(type(self), key_name), key_node)
 
-        key_attribute.from_yaml(self, loader, key_node)
+        key_attribute.from_yaml(self, loader, key_node, self.__round_trip_data)
         # loader.constructed_objects[key_node] = self
-        self.__attribute_order.append(key_attribute)
+        self.__name_order.append(key_attribute.name)
 
         if not complete_inheritance:
             self.__from_node(loader, val_node)
@@ -141,7 +150,7 @@ class Object(Yamlizable):
                 self.__add_parent(loader, val_node)
                 continue
 
-            attribute = attrs.from_yaml(self, loader, key_node, val_node)
+            attribute = attrs.from_yaml(self, loader, key_node, val_node, self.__round_trip_data)
 
             if attribute is None:
                 continue
@@ -153,7 +162,7 @@ class Object(Yamlizable):
                                      key_node)
 
             previous_attrs.add(attribute)
-            self.__attribute_order.append(attribute)
+            self.__name_order.append(attribute.name)
 
         self.__apply_defaults(node)
 
@@ -208,7 +217,7 @@ class Object(Yamlizable):
                                  node)
 
     @classmethod
-    def to_yaml(cls, dumper, self):
+    def to_yaml(cls, dumper, self, _rtd=None):
         if not isinstance(self, cls):
             raise YamlizingError('Expected instance of {}, got: {}'
                                  .format(cls, self))
@@ -221,7 +230,7 @@ class Object(Yamlizable):
         return node
 
     @classmethod
-    def to_yaml_key_val(cls, dumper, self, key_name):
+    def to_yaml_key_val(cls, dumper, self, key_name, _rtd=None):
         if not isinstance(self, cls):
             raise YamlizingError('Expected instance of {}, got: {}'
                                  .format(cls, self))
@@ -231,7 +240,7 @@ class Object(Yamlizable):
 
         key_attribute = cls.attributes.by_name[key_name]
         items = []
-        key_attribute.to_yaml(self, dumper, items)
+        key_attribute.to_yaml(self, dumper, items, self.__round_trip_data)
 
         node = self.__to_yaml(dumper, key_attribute)
 
@@ -244,12 +253,12 @@ class Object(Yamlizable):
         node_items = []
         node = ruamel.yaml.MappingNode(
             ruamel.yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, node_items)
-        self._apply_round_trip_data(node)
+        self.__round_trip_data.apply(node)
         dumper.represented_objects[self] = node
 
         attr_order = self.attributes.attr_dump_order(
             self,
-            self.__attribute_order or []
+            self.__attribute_order
         )
 
         if self.__merge_parents is not None:
@@ -275,7 +284,7 @@ class Object(Yamlizable):
             if attribute in represented_attrs:
                 continue
 
-            attribute.to_yaml(self, dumper, node_items)
+            attribute.to_yaml(self, dumper, node_items, self.__round_trip_data)
 
         return node
 

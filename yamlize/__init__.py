@@ -1,3 +1,5 @@
+import sys
+
 from yamlize.yamlizing_error import YamlizingError
 from yamlize.attributes import Attribute
 from yamlize.yamlizable import Dynamic
@@ -9,14 +11,9 @@ def yamlizable(*attributes):
     yaml_attributes = AttributeCollection(*attributes)
 
     def wrapper(klass):
-
-        class wrapped(klass, Object):
-            # __doc__ must be done here to avoid AttributeError not writable
-            __doc__ = klass.__doc__
-
-        wrapped.attributes = yaml_attributes
-        wrapped.__name__ = klass.__name__
+        wrapped = klass.__class__(klass.__name__, (klass, Object), {'attributes': yaml_attributes})
         wrapped.__module__ = klass.__module__
+        setattr(sys.modules[wrapped.__module__], klass.__name__, wrapped)
 
         for t in wrapped.__bases__:
             if issubclass(t, Object):
@@ -46,16 +43,9 @@ def yaml_map(key_type, value_type, *attributes):
     )
 
     def wrapper(klass):
-
-        class wrapped(klass, Map):
-
-            # __doc__ must be done here to avoid AttributeError not writable
-            __doc__ = klass.__doc__
-
-        wrapped.attributes = yaml_attributes
-        wrapped.__name__ = klass.__name__
+        wrapped = klass.__class__(klass.__name__, (klass, Map), {'attributes': yaml_attributes})
         wrapped.__module__ = klass.__module__
-
+        setattr(sys.modules[wrapped.__module__], klass.__name__, wrapped)
         return wrapped
 
     return wrapper
@@ -73,15 +63,10 @@ def yaml_keyed_list(key_name, item_type, *attributes):
     )
 
     def wrapper(klass):
-
-        class wrapped(klass, KeyedList):
-            # __doc__ must be done here to avoid AttributeError not writable
-            __doc__ = klass.__doc__
-
-        wrapped.attributes = yaml_attributes
-        wrapped.__name__ = klass.__name__
+        wrapped = klass.__class__(klass.__name__, (klass, KeyedList),
+                                  {'attributes': yaml_attributes})
         wrapped.__module__ = klass.__module__
-
+        setattr(sys.modules[wrapped.__module__], klass.__name__, wrapped)
         return wrapped
 
     return wrapper
@@ -92,15 +77,10 @@ def yaml_list(item_type):
     from yamlize.sequences import Sequence
 
     def wrapper(klass):
-
-        class wrapped(klass, Sequence):
-            # __doc__ must be done here to avoid AttributeError not writable
-            __doc__ = klass.__doc__
-
-        wrapped.item_type = Yamlizable.get_yamlizable_type(item_type)
-        wrapped.__name__ = klass.__name__
+        wrapped = klass.__class__(klass.__name__, (klass, Sequence),
+                                  {'item_type': Yamlizable.get_yamlizable_type(item_type)})
         wrapped.__module__ = klass.__module__
-
+        setattr(sys.modules[wrapped.__module__], klass.__name__, wrapped)
         return wrapped
 
     return wrapper

@@ -1,5 +1,7 @@
 import unittest
+import pickle
 
+import sys
 import six
 
 from yamlize import yamlizable
@@ -180,6 +182,20 @@ class Test_two_way(unittest.TestCase):
         out_stream = six.StringIO()
         AnimalSequence.dump(animals, out_stream)
         self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
+
+    def test_pickleable(self):
+        in_stream = ('&possum\n'
+                     'name: Possum\n'
+                     'friend: {name: Maggie, friend: *possum}\n'
+                     )
+        poss = AnimalWithFriend.load(in_stream)
+        assert getattr(sys.modules[__name__], 'AnimalWithFriend') == AnimalWithFriend
+        poss2 = pickle.loads(pickle.dumps(poss))
+        out_stream = AnimalWithFriend.dump(poss2)
+        self.assertNotEqual(in_stream, out_stream)
+        poss3 = AnimalWithFriend.load(out_stream)
+        self.assertEqual(poss3.name, 'Possum')
+        self.assertEqual(poss3.friend.name, 'Maggie')
 
 
 if __name__ == '__main__':

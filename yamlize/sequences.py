@@ -2,11 +2,14 @@ import ruamel.yaml
 
 from yamlize.yamlizing_error import YamlizingError
 from yamlize.yamlizable import Yamlizable, Dynamic
+from .round_trip_data import RoundTripData
 
 
 class Sequence(Yamlizable):
 
-    __slots__ = ('__items',)
+    __slots__ = ('__items', '__round_trip_data')
+
+    __round_trip_data = RoundTripData(None)
 
     item_type = Dynamic
 
@@ -38,7 +41,7 @@ class Sequence(Yamlizable):
         del self.__data[index]
 
     @classmethod
-    def from_yaml(cls, loader, node):
+    def from_yaml(cls, loader, node, _rtd=None):
         if not isinstance(node, ruamel.yaml.SequenceNode):
             raise YamlizingError('Expected a SequenceNode', node)
 
@@ -46,18 +49,18 @@ class Sequence(Yamlizable):
             return loader.constructed_objects[node]
 
         self = cls()
-        self._set_round_trip_data(node)
+        self.__round_trip_data = RoundTripData(node)
         loader.constructed_objects[node] = self
 
         # node.value list of values
         for item_node in node.value:
-            value = cls.item_type.from_yaml(loader, item_node)
+            value = cls.item_type.from_yaml(loader, item_node, self.__round_trip_data)
             self.append(value)
 
         return self
 
     @classmethod
-    def to_yaml(cls, dumper, self):
+    def to_yaml(cls, dumper, self, _rtd=None):
         if not isinstance(self, cls):
             raise YamlizingError(
                 'Expected instance of {}, got: {}'.format(
@@ -69,11 +72,11 @@ class Sequence(Yamlizable):
         items = []
         node = ruamel.yaml.SequenceNode(
             ruamel.yaml.resolver.BaseResolver.DEFAULT_SEQUENCE_TAG, items)
-        self._apply_round_trip_data(node)
+        self.__round_trip_data.apply(node)
         dumper.represented_objects[self] = node
 
         for item in self:
-            item_node = self.item_type.to_yaml(dumper, item)
+            item_node = self.item_type.to_yaml(dumper, item, self.__round_trip_data)
             items.append(item_node)
 
         return node
