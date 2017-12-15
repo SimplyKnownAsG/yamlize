@@ -6,14 +6,12 @@ from .round_trip_data import RoundTripData
 
 
 class Sequence(Yamlizable):
+    item_type = Dynamic
 
     __slots__ = ('__items', '__round_trip_data')
 
-    __round_trip_data = RoundTripData(None)
-
-    item_type = Dynamic
-
     def __init__(self, *items):
+        self.__round_trip_data = RoundTripData(None)
         self.__items = items or []
 
     def __getattr__(self, attr_name):
