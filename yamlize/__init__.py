@@ -3,6 +3,7 @@ import sys
 from yamlize.yamlizing_error import YamlizingError
 from yamlize.attributes import Attribute
 from yamlize.yamlizable import Dynamic
+from .sequences import Sequence
 
 
 def yamlizable(*attributes):

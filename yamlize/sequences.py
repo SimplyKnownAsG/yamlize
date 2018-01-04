@@ -1,5 +1,7 @@
 import ruamel.yaml
 
+from six.moves import zip
+
 from yamlize.yamlizing_error import YamlizingError
 from yamlize.yamlizable import Yamlizable, Dynamic
 from .round_trip_data import RoundTripData
@@ -10,9 +12,9 @@ class Sequence(Yamlizable):
 
     __slots__ = ('__items', '__round_trip_data')
 
-    def __init__(self, *items):
+    def __init__(self, items=()):
         self.__round_trip_data = RoundTripData(None)
-        self.__items = items or []
+        self.__items = list(items)
 
     def __getattr__(self, attr_name):
         return getattr(self.__items, attr_name)
@@ -33,10 +35,46 @@ class Sequence(Yamlizable):
         return self.__items[index]
 
     def __setitem__(self, index, value):
-        self.__data[index] = value
+        self.__items[index] = value
 
     def __delitem__(self, index):
-        del self.__data[index]
+        del self.__items[index]
+
+    def __eq__(self, other):
+        try:
+            if len(self) != len(other):
+                return False
+
+            for mine, theirs in zip(self, other):
+                # only uses the == comparison
+                if mine == theirs:
+                    continue
+
+                return False
+
+            return True
+
+        except Exception:
+            return False
+
+    def __ne__(self, other):
+        try:
+            if len(self) != len(other):
+                return True
+
+            for mine, theirs in zip(self, other):
+                # only uses the != comparison
+                if mine != theirs:
+                    return True
+
+            return False
+
+        except Exception:
+            return True
+
+    # TODO: this is supposed to return the same value when __eq__ == True
+    def __hash__(self):
+        return id(self)
 
     @classmethod
     def from_yaml(cls, loader, node, _rtd=None):

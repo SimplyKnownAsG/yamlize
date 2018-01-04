@@ -8,8 +8,6 @@ from yamlize import yamlizable
 from yamlize import YamlizingError
 from yamlize import Attribute
 from yamlize import yaml_list
-from yamlize import yaml_map
-from yamlize import yaml_keyed_list
 
 
 @yamlizable(Attribute(name='name'),
@@ -147,40 +145,6 @@ class Test_two_way(unittest.TestCase):
         self.assertIs(poss, maggie.friend)
         out_stream = six.StringIO()
         AnimalWithFriend.dump(poss, out_stream)
-        self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
-
-    def test_sequence(self):
-
-        @yamlizable(Attribute(name='name', type=str))
-        class AnimalWithFriends(object):
-            pass
-
-        @yaml_list(item_type=AnimalWithFriends)
-        class AnimalSequence(object):
-            pass
-
-        AnimalWithFriends.attributes.add(Attribute(name='friends',
-                                                   type=AnimalSequence,
-                                                   default=None))
-
-        in_stream = six.StringIO('# no friends :(\n'
-                                 '- name: Lucy # no friends\n'
-                                 '- &luna\n'
-                                 '  name: Luna\n'
-                                 '  friends:\n'
-                                 '  - &possum\n'
-                                 '    name: Possum\n'
-                                 '    friends: [*luna]\n'
-                                 '- *possum\n'
-                                 )
-        animals = AnimalSequence.load(in_stream)
-
-        self.assertTrue(all(isinstance(a, AnimalWithFriends) for a in animals))
-        self.assertEqual(animals[1], animals[2].friends[0])
-        self.assertEqual(animals[2], animals[1].friends[0])
-
-        out_stream = six.StringIO()
-        AnimalSequence.dump(animals, out_stream)
         self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
 
     def test_pickleable(self):
