@@ -1,5 +1,6 @@
 import unittest
 import pickle
+import copy
 
 import sys
 import six
@@ -135,29 +136,42 @@ class Test_to_yaml(unittest.TestCase):
 
 class Test_two_way(unittest.TestCase):
 
+    test_yaml = ('&possum\n'
+                 'name: Possum\n'
+                 'friend: {name: Maggie, friend: *possum}\n'
+                 )
+
     def test_animal_with_friend(self):
-        in_stream = six.StringIO('&possum\n'
-                                 'name: Possum\n'
-                                 'friend: {name: Maggie, friend: *possum}\n'
-                                 )
-        poss = AnimalWithFriend.load(in_stream)
+        poss = AnimalWithFriend.load(self.test_yaml)
         maggie = poss.friend
         self.assertIs(poss, maggie.friend)
-        out_stream = six.StringIO()
-        AnimalWithFriend.dump(poss, out_stream)
-        self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
+        out_yaml = AnimalWithFriend.dump(poss)
+        self.assertEqual(self.test_yaml, out_yaml)
 
     def test_pickleable(self):
-        in_stream = ('&possum\n'
-                     'name: Possum\n'
-                     'friend: {name: Maggie, friend: *possum}\n'
-                     )
-        poss = AnimalWithFriend.load(in_stream)
-        assert getattr(sys.modules[__name__], 'AnimalWithFriend') == AnimalWithFriend
+        poss = AnimalWithFriend.load(self.test_yaml)
         poss2 = pickle.loads(pickle.dumps(poss))
-        out_stream = AnimalWithFriend.dump(poss2)
-        self.assertNotEqual(in_stream, out_stream)
-        poss3 = AnimalWithFriend.load(out_stream)
+        out_yaml = AnimalWithFriend.dump(poss2)
+        self.assertNotEqual(self.test_yaml, out_yaml)
+        poss3 = AnimalWithFriend.load(out_yaml)
+        self.assertEqual(poss3.name, 'Possum')
+        self.assertEqual(poss3.friend.name, 'Maggie')
+
+    def test_copy(self):
+        poss = AnimalWithFriend.load(self.test_yaml)
+        poss2 = copy.copy(poss)
+        out_yaml = AnimalWithFriend.dump(poss2)
+        self.assertNotEqual(self.test_yaml, out_yaml)
+        poss3 = AnimalWithFriend.load(out_yaml)
+        self.assertEqual(poss3.name, 'Possum')
+        self.assertEqual(poss3.friend.name, 'Maggie')
+
+    def test_deepcopy(self):
+        poss = AnimalWithFriend.load(self.test_yaml)
+        poss2 = copy.deepcopy(poss)
+        out_yaml = AnimalWithFriend.dump(poss2)
+        self.assertNotEqual(self.test_yaml, out_yaml)
+        poss3 = AnimalWithFriend.load(out_yaml)
         self.assertEqual(poss3.name, 'Possum')
         self.assertEqual(poss3.friend.name, 'Maggie')
 

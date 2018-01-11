@@ -13,8 +13,15 @@ class Sequence(Yamlizable):
     __slots__ = ('__items', '__round_trip_data')
 
     def __init__(self, items=()):
+        Yamlizable.__init__(self)
         self.__round_trip_data = RoundTripData(None)
         self.__items = list(items)
+
+    def __getstate__(self):
+        return list(self.__items)
+
+    def __setstate__(self, state):
+        self.__init__(state)
 
     def __getattr__(self, attr_name):
         return getattr(self.__items, attr_name)
@@ -116,3 +123,4 @@ class Sequence(Yamlizable):
             items.append(item_node)
 
         return node
+

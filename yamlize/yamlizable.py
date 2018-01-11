@@ -11,27 +11,29 @@ class Yamlizable(object):
     __slots__ = ()
 
     def __getstate__(self):
+        state = {}
+
         if hasattr(self, '__dict__'):
-            d = {}
-            for k, v in self.__dict__.items():
-                d[k] = v
-            return d
-        else:
-            state = []
-            for cls in type(self).__mro__:
-                for attr_name in cls.__slots__:
-                    state.append(getattr(self, attr_name))
-            return tuple(state)
+            state.update(self.__dict__)
+
+        for cls in type(self).__mro__:
+            if not hasattr(cls, '__slots__'):
+                continue
+
+            for attr_name in cls.__slots__:
+
+                if attr_name.startswith('__'):
+                    attr_name = '_{}{}'.format(cls.__name__, attr_name)
+                    while attr_name.startswith('__'):
+                        attr_name = attr_name[1:]
+
+                state[attr_name] = getattr(self, attr_name)
+
+        return state
 
     def __setstate__(self, state):
-        if isinstance(state, dict):
-            self.__dict__.update(state)
-        else:
-            ii = 0
-            for cls in type(self).__mro__:
-                for attr_name in cls.__slots__:
-                    setattr(self, attr_name, state[ii])
-                    ii += 1
+        for k, v in state.items():
+            setattr(self, k, v)
 
     @classmethod
     def get_yamlizable_type(cls, type_):
@@ -97,6 +99,8 @@ class Typed(type):
 
 
 class Strong(Yamlizable):
+
+    __slots__ = ()
 
     __type = None
 

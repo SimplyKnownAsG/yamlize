@@ -35,6 +35,7 @@ class __MapBase(Object):
         :param *args: sequence of key/value pairs.
         :param **kwargs: kwargs for input to OrderedDict.
         """
+        Object.__init__(self)
         self.__data = OrderedDict(*args, **kwargs)
 
     def __getattr__(self, attr_name):

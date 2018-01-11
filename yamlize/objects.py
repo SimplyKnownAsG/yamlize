@@ -22,6 +22,12 @@ class _AliasLink(object):
         self.parent = parent
         self.attributes = []
 
+    def __getstate__(self):
+        return None
+
+    def __setstate__(self, state):
+        self.__init__(state)
+
     def __repr__(self):
         return '<AliasLink to {}>'.format(self.parent)
 
@@ -287,5 +293,4 @@ class Object(Yamlizable):
             attribute.to_yaml(self, dumper, node_items, self.__round_trip_data)
 
         return node
-
 

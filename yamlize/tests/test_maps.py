@@ -1,5 +1,7 @@
 import unittest
 import re
+import pickle
+import copy
 
 import six
 
@@ -112,7 +114,6 @@ class Test_to_yaml(unittest.TestCase):
         self.assertNotIn('name:', yaml)
         self.assertIn('age: ', yaml)
         self.assertLess(yaml.index('Possum'), yaml.index('Lucy'))
-
 
 class Test_two_way(unittest.TestCase):
 
@@ -341,6 +342,21 @@ Tuesday:
 
         actual = Menus.dump(menus).strip()
         self.assertEqual(self.__class__.daily_menus, actual)
+
+    def test_pickleable(self):
+        kennel = NamedKennel.load(named_kennel_yaml)
+        kennel2 = pickle.loads(pickle.dumps(kennel))
+        self.assertEqual(kennel2['Lucy'].age, 5)
+
+    def test_pickleable(self):
+        kennel = NamedKennel.load(named_kennel_yaml)
+        kennel2 = copy.copy(kennel)
+        self.assertEqual(kennel2['Lucy'].age, 5)
+
+    def test_pickleable(self):
+        kennel = NamedKennel.load(named_kennel_yaml)
+        kennel2 = copy.deepcopy(kennel)
+        self.assertEqual(kennel2['Lucy'].age, 5)
 
 
 if __name__ == '__main__':

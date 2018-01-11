@@ -1,5 +1,6 @@
 import unittest
 import pickle
+import copy
 
 import sys
 import six
@@ -42,42 +43,56 @@ class Test_Sequence_list_methods(unittest.TestCase):
         self.assertFalse(s_seq != s_list)  # use assertFalse and == to force __eq__ usage
         self.assertFalse(s_list != s_seq)
 
+@yamlizable(Attribute(name='name', type=str))
+class AnimalWithFriends(object):
+    pass
+
+@yaml_list(item_type=AnimalWithFriends)
+class AnimalSequence(object):
+    pass
+
+AnimalWithFriends.attributes.add(Attribute(name='friends',
+                                           type=AnimalSequence,
+                                           default=None))
+
 
 class Test_two_way(unittest.TestCase):
 
+    test_yaml = ('# no friends :(\n'
+                 '- name: Lucy # no friends\n'
+                 '- &luna\n'
+                 '  name: Luna\n'
+                 '  friends:\n'
+                 '  - &possum\n'
+                 '    name: Possum\n'
+                 '    friends: [*luna]\n'
+                 '- *possum\n'
+                 )
+
     def test_sequence(self):
-
-        @yamlizable(Attribute(name='name', type=str))
-        class AnimalWithFriends(object):
-            pass
-
-        @yaml_list(item_type=AnimalWithFriends)
-        class AnimalSequence(object):
-            pass
-
-        AnimalWithFriends.attributes.add(Attribute(name='friends',
-                                                   type=AnimalSequence,
-                                                   default=None))
-
-        in_stream = six.StringIO('# no friends :(\n'
-                                 '- name: Lucy # no friends\n'
-                                 '- &luna\n'
-                                 '  name: Luna\n'
-                                 '  friends:\n'
-                                 '  - &possum\n'
-                                 '    name: Possum\n'
-                                 '    friends: [*luna]\n'
-                                 '- *possum\n'
-                                 )
-        animals = AnimalSequence.load(in_stream)
+        animals = AnimalSequence.load(self.test_yaml)
 
         self.assertTrue(all(isinstance(a, AnimalWithFriends) for a in animals))
         self.assertEqual(animals[1], animals[2].friends[0])
         self.assertEqual(animals[2], animals[1].friends[0])
 
-        out_stream = six.StringIO()
-        AnimalSequence.dump(animals, out_stream)
-        self.assertEqual(in_stream.getvalue(), out_stream.getvalue())
+        out_stream = AnimalSequence.dump(animals)
+        self.assertEqual(self.test_yaml, out_stream)
+
+    def test_pickleable(self):
+        animals = AnimalSequence.load(self.test_yaml)
+        a2 = pickle.loads(pickle.dumps(animals))
+        self.assertEqual(a2[1].friends[0].name, 'Possum')
+
+    def test_copy(self):
+        animals = AnimalSequence.load(self.test_yaml)
+        a2 = copy.copy(animals)
+        self.assertEqual(a2[1].friends[0].name, 'Possum')
+
+    def test_deepcopy(self):
+        animals = AnimalSequence.load(self.test_yaml)
+        a2 = copy.deepcopy(animals)
+        self.assertEqual(a2[1].friends[0].name, 'Possum')
 
 
 if __name__ == '__main__':
