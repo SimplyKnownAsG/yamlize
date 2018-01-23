@@ -1,8 +1,8 @@
 import inspect
 
-from yamlize.yamlizable import Dynamic
-from yamlize.yamlizable import Yamlizable
-from yamlize.yamlizing_error import YamlizingError
+from .yamlizable import Dynamic
+from .yamlizable import Yamlizable
+from .yamlizing_error import YamlizingError
 
 
 class NODEFAULT:

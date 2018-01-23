@@ -1,17 +1,17 @@
 import sys
 
-from yamlize.yamlizing_error import YamlizingError
-from yamlize.attributes import Attribute
-from yamlize.yamlizable import Dynamic
+from .attributes import Attribute
 from .sequences import Sequence
+from .yamlizable import Dynamic
+from .yamlizing_error import YamlizingError
 
 
 def yamlizable(*attributes):
-    from yamlize.attribute_collection import AttributeCollection
-    from yamlize.objects import Object
+    from .attribute_collection import AttributeCollection
+    from .objects import Object
     yaml_attributes = AttributeCollection(*attributes)
 
-    def wrapper(klass):
+    def wrapper(klass):  # pylint: disable=missing-docstring
         wrapped = klass.__class__(klass.__name__, (klass, Object), {'attributes': yaml_attributes})
         wrapped.__module__ = klass.__module__
         setattr(sys.modules[wrapped.__module__], klass.__name__, wrapped)
@@ -33,9 +33,9 @@ A more logical, less fun, alias for `yamlizable`.
 
 
 def yaml_map(key_type, value_type, *attributes):
-    from yamlize.attribute_collection import AttributeAndMapItemCollection
-    from yamlize.yamlizable import Yamlizable
-    from yamlize.maps import Map
+    from .attribute_collection import AttributeAndMapItemCollection
+    from .yamlizable import Yamlizable
+    from .maps import Map
 
     yaml_attributes = AttributeAndMapItemCollection(
         Yamlizable.get_yamlizable_type(key_type),
@@ -43,7 +43,7 @@ def yaml_map(key_type, value_type, *attributes):
         *attributes
     )
 
-    def wrapper(klass):
+    def wrapper(klass):  # pylint: disable=missing-docstring
         wrapped = klass.__class__(klass.__name__, (klass, Map), {'attributes': yaml_attributes})
         wrapped.__module__ = klass.__module__
         setattr(sys.modules[wrapped.__module__], klass.__name__, wrapped)
@@ -53,9 +53,9 @@ def yaml_map(key_type, value_type, *attributes):
 
 
 def yaml_keyed_list(key_name, item_type, *attributes):
-    from yamlize.attribute_collection import KeyedListItemCollection
-    from yamlize.yamlizable import Yamlizable
-    from yamlize.maps import KeyedList
+    from .attribute_collection import KeyedListItemCollection
+    from .yamlizable import Yamlizable
+    from .maps import KeyedList
 
     yaml_attributes = KeyedListItemCollection(
         key_name,
@@ -63,7 +63,7 @@ def yaml_keyed_list(key_name, item_type, *attributes):
         *attributes
     )
 
-    def wrapper(klass):
+    def wrapper(klass):  # pylint: disable=missing-docstring
         wrapped = klass.__class__(klass.__name__, (klass, KeyedList),
                                   {'attributes': yaml_attributes})
         wrapped.__module__ = klass.__module__
@@ -74,10 +74,9 @@ def yaml_keyed_list(key_name, item_type, *attributes):
 
 
 def yaml_list(item_type):
-    from yamlize.yamlizable import Yamlizable
-    from yamlize.sequences import Sequence
+    from .yamlizable import Yamlizable
 
-    def wrapper(klass):
+    def wrapper(klass):  # pylint: disable=missing-docstring
         wrapped = klass.__class__(klass.__name__, (klass, Sequence),
                                   {'item_type': Yamlizable.get_yamlizable_type(item_type)})
         wrapped.__module__ = klass.__module__

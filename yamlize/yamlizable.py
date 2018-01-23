@@ -2,8 +2,8 @@ import ruamel.yaml
 import six
 import inspect
 
-from yamlize import YamlizingError
 from .round_trip_data import RoundTripData
+from .yamlizing_error import YamlizingError
 
 
 class Yamlizable(object):

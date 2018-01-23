@@ -1,6 +1,6 @@
 
-from yamlize.yamlizing_error import YamlizingError
-from yamlize.attributes import Attribute, MapItem, KeyedListItem
+from .attributes import Attribute, MapItem, KeyedListItem
+from .yamlizing_error import YamlizingError
 
 
 class AttributeCollection(object):

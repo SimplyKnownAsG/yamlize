@@ -2,8 +2,8 @@ import inspect
 
 import ruamel.yaml
 
-from yamlize.yamlizable import Yamlizable, Dynamic
-from yamlize import YamlizingError
+from .yamlizable import Yamlizable
+from .yamlizing_error import YamlizingError
 from .round_trip_data import RoundTripData
 
 

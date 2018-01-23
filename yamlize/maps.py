@@ -2,9 +2,9 @@ import ruamel.yaml
 
 from collections import OrderedDict
 
-from yamlize.yamlizable import Dynamic
-from yamlize.objects import Object
-from yamlize import YamlizingError
+from .objects import Object
+from .yamlizable import Dynamic
+from .yamlizing_error import YamlizingError
 
 
 class __MapBase(Object):
@@ -129,13 +129,7 @@ class KeyedList(__MapBase):
         super(KeyedList, self).__setitem__(key, value)
 
     def add(self, item):
-        super(
-            KeyedList,
-            self).__setitem__(
-            getattr(
-                item,
-                self.attributes.key_name),
-            item)
+        self[getattr(item, self.attributes.key_name)] = item
 
     def __iter__(self):
         return iter(self.values())

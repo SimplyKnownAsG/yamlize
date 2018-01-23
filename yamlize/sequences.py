@@ -2,9 +2,9 @@ import ruamel.yaml
 
 from six.moves import zip
 
-from yamlize.yamlizing_error import YamlizingError
-from yamlize.yamlizable import Yamlizable, Dynamic
 from .round_trip_data import RoundTripData
+from .yamlizable import Yamlizable, Dynamic
+from .yamlizing_error import YamlizingError
 
 
 class Sequence(Yamlizable):
