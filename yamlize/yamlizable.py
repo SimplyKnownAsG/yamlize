@@ -16,16 +16,24 @@ class Yamlizable(object):
         if hasattr(self, '__dict__'):
             state.update(self.__dict__)
 
-        for cls in type(self).__mro__:
-            if not hasattr(cls, '__slots__'):
+        applied_slots = set((None,))  # populated with None
+
+        for cls in reversed(type(self).__mro__):
+            cls_slots = getattr(cls, '__slots__', None)
+
+            if cls_slots in applied_slots:
                 continue
 
-            for attr_name in cls.__slots__:
+            applied_slots.add(cls_slots)
 
+            for attr_name in cls_slots:
                 if attr_name.startswith('__'):
                     attr_name = '_{}{}'.format(cls.__name__, attr_name)
                     while attr_name.startswith('__'):
                         attr_name = attr_name[1:]
+
+                if attr_name in state:
+                    continue
 
                 state[attr_name] = getattr(self, attr_name)
 
@@ -122,8 +130,7 @@ class Strong(Yamlizable):
                 raise YamlizingError(
                     'Coerced `{}` to `{}`, but the new value `{}`'
                     ' is not equal to old `{}`.'
-                    .format(type(data), type(new_value), new_value, data),
-                    node)
+                    .format(type(data), type(new_value), new_value, data), node)
 
             data = new_value
 

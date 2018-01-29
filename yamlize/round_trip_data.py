@@ -1,8 +1,7 @@
-import six
 
 
-# TODO: replace with ruamel.yaml.comments.Anchor
 class _AnchorNode(object):
+    # TODO: replace with ruamel.yaml.comments.Anchor
 
     __slots__ = ('value', )
 
@@ -10,33 +9,18 @@ class _AnchorNode(object):
         self.value = value
 
 
-class __RoundTripType(type):
-
-    def __init__(cls, *args):
-        type.__init__(cls, *args)
-        cls.__no_data = cls.__new__(cls)
-        cls.__no_data.__init__(None)
-
-    def __call__(cls, node):
-        if node is None:
-            return cls.__no_data
-        else:
-            inst = type.__call__(cls, node)
-            return inst
-
-
-@six.add_metaclass(__RoundTripType)
 class RoundTripData(object):
 
-    __slots__ = ('_rtd', '_kids_rtd')  # can't use private variables with six
+    __slots__ = ('_rtd', '_kids_rtd', '_name_order')  # can't use private variables with six
 
     def __init__(self, node):
         self._rtd = {}
         self._kids_rtd = {}
+        self._name_order = []
 
         if node is not None:
             for key in dir(node):
-                if key.startswith('__') or key in {'value', 'id'}:
+                if key.startswith('__') or key in {'value', 'id', 'start_mark', 'end_mark'}:
                     continue
 
                 attr = getattr(node, key)
@@ -48,7 +32,7 @@ class RoundTripData(object):
 
     def __reduce__(self):
         """
-        Used for pickling, redults in a loss of data.
+        Used for pickling, results in a loss of data.
 
         Some objects from ruamel.yaml do not appear to be pickleable.
         """

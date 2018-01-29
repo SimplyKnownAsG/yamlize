@@ -81,8 +81,9 @@ class Test_two_way(unittest.TestCase):
 
     def test_pickleable(self):
         animals = AnimalSequence.load(self.test_yaml)
-        a2 = pickle.loads(pickle.dumps(animals))
-        self.assertEqual(a2[1].friends[0].name, 'Possum')
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            a2 = pickle.loads(pickle.dumps(animals, protocol=protocol))
+            self.assertEqual(a2[1].friends[0].name, 'Possum')
 
     def test_copy(self):
         animals = AnimalSequence.load(self.test_yaml)

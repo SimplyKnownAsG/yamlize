@@ -150,12 +150,13 @@ class Test_two_way(unittest.TestCase):
 
     def test_pickleable(self):
         poss = AnimalWithFriend.load(self.test_yaml)
-        poss2 = pickle.loads(pickle.dumps(poss))
-        out_yaml = AnimalWithFriend.dump(poss2)
-        self.assertNotEqual(self.test_yaml, out_yaml)
-        poss3 = AnimalWithFriend.load(out_yaml)
-        self.assertEqual(poss3.name, 'Possum')
-        self.assertEqual(poss3.friend.name, 'Maggie')
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            poss2 = pickle.loads(pickle.dumps(poss, protocol=protocol))
+            out_yaml = AnimalWithFriend.dump(poss2)
+            self.assertNotEqual(self.test_yaml, out_yaml)
+            poss3 = AnimalWithFriend.load(out_yaml)
+            self.assertEqual(poss3.name, 'Possum')
+            self.assertEqual(poss3.friend.name, 'Maggie')
 
     def test_copy(self):
         poss = AnimalWithFriend.load(self.test_yaml)

@@ -345,15 +345,16 @@ Tuesday:
 
     def test_pickleable(self):
         kennel = NamedKennel.load(named_kennel_yaml)
-        kennel2 = pickle.loads(pickle.dumps(kennel))
-        self.assertEqual(kennel2['Lucy'].age, 5)
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            kennel2 = pickle.loads(pickle.dumps(kennel, protocol=protocol))
+            self.assertEqual(kennel2['Lucy'].age, 5)
 
-    def test_pickleable(self):
+    def test_copy(self):
         kennel = NamedKennel.load(named_kennel_yaml)
         kennel2 = copy.copy(kennel)
         self.assertEqual(kennel2['Lucy'].age, 5)
 
-    def test_pickleable(self):
+    def test_deepcopy(self):
         kennel = NamedKennel.load(named_kennel_yaml)
         kennel2 = copy.deepcopy(kennel)
         self.assertEqual(kennel2['Lucy'].age, 5)

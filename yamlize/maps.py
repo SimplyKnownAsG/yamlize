@@ -24,7 +24,7 @@ class __MapBase(Object):
         :param *args: sequence of key/value pairs.
         :param **kwargs: kwargs for input to OrderedDict.
         """
-        self = object.__new__(cls)
+        self = Object.__new__(cls)
         self.__data = OrderedDict()
         return self
 

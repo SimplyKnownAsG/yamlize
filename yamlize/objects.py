@@ -68,22 +68,25 @@ class _AliasLink(object):
 
 class Object(Yamlizable):
 
-    __merge_parents = None
-
-    __complete_inheritance = False
-
-    __name_order = None
-
-    __round_trip_data = RoundTripData(None)
+    __slots__ = ('__merge_parents', '__complete_inheritance', '__round_trip_data')
 
     attributes = ()
 
+    def __new__(cls, *args, **kwargs):
+        self = Yamlizable.__new__(cls)
+        self.__merge_parents = []
+        self.__complete_inheritance = False
+        self.__round_trip_data = RoundTripData(None)
+        return self
+
     @property
     def __attribute_order(self):
-        if self.__name_order is None:
-            return []
+        if self.__round_trip_data is None:
+            return ()
+        if self.__round_trip_data._name_order is None:
+            return ()
         else:
-            return [self.attributes.by_name[n] for n in self.__name_order]
+            return [self.attributes.by_name[n] for n in self.__round_trip_data._name_order]
 
     @classmethod
     def from_yaml(cls, loader, node, _rtd=None):
@@ -95,7 +98,6 @@ class Object(Yamlizable):
 
         self = cls.__new__(cls)
         self.__round_trip_data = RoundTripData(node)
-        self.__name_order = []
         loader.constructed_objects[node] = self
         self.__from_node(loader, node)
 
@@ -117,9 +119,7 @@ class Object(Yamlizable):
                 #     child: *parent
                 complete_inheritance = True
 
-        attrs = cls.attributes.by_key
         self = cls.__new__(cls)
-        self.__name_order = []
 
         if not complete_inheritance:
             # val_node should point to original object
@@ -138,7 +138,7 @@ class Object(Yamlizable):
 
         key_attribute.from_yaml(self, loader, key_node, self.__round_trip_data)
         # loader.constructed_objects[key_node] = self
-        self.__name_order.append(key_attribute.name)
+        self.__round_trip_data._name_order.append(key_attribute.name)
 
         if not complete_inheritance:
             self.__from_node(loader, val_node)
@@ -168,16 +168,12 @@ class Object(Yamlizable):
                                      key_node)
 
             previous_attrs.add(attribute)
-            self.__name_order.append(attribute.name)
+            self.__round_trip_data._name_order.append(attribute.name)
 
         self.__apply_defaults(node)
 
     def __add_parent(self, loader, parent_node):
-        if self.__merge_parents is None:
-            self.__merge_parents = list()
-
-        self.__merge_parents.append(_AliasLink(
-            loader.constructed_objects[parent_node]))
+        self.__merge_parents.append(_AliasLink(loader.constructed_objects[parent_node]))
 
     def __apply_defaults(self, node):
         applied_attrs = set(self.__attribute_order)
