@@ -1,7 +1,5 @@
 import inspect
 
-from .yamlizable import Dynamic
-from .yamlizable import Yamlizable
 from .yamlizing_error import YamlizingError
 
 
@@ -86,6 +84,7 @@ class Attribute(_Attribute):
     __slots__ = ('name', 'key', 'type', 'default')
 
     def __init__(self, name, key=None, type=NODEFAULT, default=NODEFAULT):
+        from yamlize.yamlizable import Yamlizable, Dynamic
         self.name = name
         self.key = key or name
         self.default = default
@@ -123,6 +122,7 @@ class Attribute(_Attribute):
         return new_value
 
     def from_yaml(self, obj, loader, node, round_trip_data):
+        from yamlize.yamlizable import Yamlizable
         if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
             value = self.type.from_yaml(loader, node, round_trip_data)
 
@@ -139,6 +139,7 @@ class Attribute(_Attribute):
                                  .format(self.name, value, ee), node)
 
     def to_yaml(self, obj, dumper, node_items, round_trip_data):
+        from yamlize.yamlizable import Yamlizable
         data = self.get_value(obj)
 
         if self.has_default and data == self.default:
@@ -202,10 +203,10 @@ class MapItem(_Attribute):
         return False
 
     def to_yaml(self, obj, dumper, node_items, round_trip_data):
+        from yamlize.yamlizable import Yamlizable
         data = self.get_value(obj)
 
-        if inspect.isclass(self.val_type) and issubclass(
-                self.val_type, Yamlizable):
+        if inspect.isclass(self.val_type) and issubclass(self.val_type, Yamlizable):
             val_node = self.val_type.to_yaml(dumper, data, round_trip_data)
 
         # this will happen for something that is not subclass-able (bool)

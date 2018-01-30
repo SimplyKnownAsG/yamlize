@@ -9,6 +9,7 @@ from yamlize import yamlizable
 from yamlize import YamlizingError
 from yamlize import Attribute
 from yamlize import yaml_list
+from yamlize.objects import Object
 
 
 @yamlizable(Attribute(name='name'),

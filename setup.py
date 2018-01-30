@@ -59,8 +59,7 @@ setup(
 
     # List additional groups of dependencies here (e.g. development dependencies)
     extras_require={
-        # 'dev': ['check-manifest'],
-        # 'test': ['coverage'],
+        'dev': ['yaml', 'pytest', 'pycodestyle', 'sphinx'],
     },
 
     # # Data files

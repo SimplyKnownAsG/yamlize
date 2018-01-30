@@ -1,6 +1,6 @@
 
-from .attributes import Attribute, MapItem, KeyedListItem
-from .yamlizing_error import YamlizingError
+from yamlize.attributes import Attribute, MapItem, KeyedListItem
+from yamlize.yamlizing_error import YamlizingError
 
 
 class AttributeCollection(object):
@@ -89,7 +89,7 @@ class AttributeCollection(object):
         return attr_order + new_attrs
 
 
-class AttributeAndMapItemCollection(AttributeCollection):
+class MapAttributeCollection(AttributeCollection):
 
     __slots__ = ('key_type', 'value_type')
 
@@ -153,7 +153,7 @@ class AttributeAndMapItemCollection(AttributeCollection):
         return attr_order
 
 
-class KeyedListItemCollection(AttributeCollection):
+class KeyedListAttributeCollection(AttributeCollection):
 
     __slots__ = ('key_name', 'item_type')
 

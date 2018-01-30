@@ -1,14 +1,16 @@
 import sys
 
-from .attributes import Attribute
+from .attributes import Attribute, MapItem, KeyedListItem
+from .attribute_collection import (AttributeCollection, MapAttributeCollection,
+                                   KeyedListAttributeCollection)
+from .maps import Map, KeyedList
+from .objects import Object
 from .sequences import Sequence
-from .yamlizable import Dynamic
+from .yamlizable import Dynamic, Yamlizable
 from .yamlizing_error import YamlizingError
 
 
 def yamlizable(*attributes):
-    from .attribute_collection import AttributeCollection
-    from .objects import Object
     yaml_attributes = AttributeCollection(*attributes)
 
     def wrapper(klass):  # pylint: disable=missing-docstring
@@ -33,11 +35,7 @@ A more logical, less fun, alias for `yamlizable`.
 
 
 def yaml_map(key_type, value_type, *attributes):
-    from .attribute_collection import AttributeAndMapItemCollection
-    from .yamlizable import Yamlizable
-    from .maps import Map
-
-    yaml_attributes = AttributeAndMapItemCollection(
+    yaml_attributes = MapAttributeCollection(
         Yamlizable.get_yamlizable_type(key_type),
         Yamlizable.get_yamlizable_type(value_type),
         *attributes
@@ -53,11 +51,7 @@ def yaml_map(key_type, value_type, *attributes):
 
 
 def yaml_keyed_list(key_name, item_type, *attributes):
-    from .attribute_collection import KeyedListItemCollection
-    from .yamlizable import Yamlizable
-    from .maps import KeyedList
-
-    yaml_attributes = KeyedListItemCollection(
+    yaml_attributes = KeyedListAttributeCollection(
         key_name,
         Yamlizable.get_yamlizable_type(item_type),
         *attributes
@@ -74,8 +68,6 @@ def yaml_keyed_list(key_name, item_type, *attributes):
 
 
 def yaml_list(item_type):
-    from .yamlizable import Yamlizable
-
     def wrapper(klass):  # pylint: disable=missing-docstring
         wrapped = klass.__class__(klass.__name__, (klass, Sequence),
                                   {'item_type': Yamlizable.get_yamlizable_type(item_type)})
