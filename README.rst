@@ -19,15 +19,28 @@ yamlize
 .. contents:: Table of Contents
     :backlinks: top
 
+A couple important notes:
+
+* ``yamlize`` and ``Yamlizable.load`` do not call ``__init__``. Instead they use ``__new__`` to
+  create an instance and ``setattr(obj, name, value)`` to set attributes read from YAML. If you
+  would like to customize some sort of initialization you can create your own ``__new__`` method,
+  or override Yamlizable.from_yaml_
+* ``yamlize`` can be used for data validation, search "data validation" within the page for various
+  topics of interest.
+* Within the examples, you may notice ``<BLANKLINE>`` simply indicating that there is a newline at
+  the end of a string. This is an artifact of using `doctest
+  <https://docs.python.org/3/library/doctest.html>`_.
+
+
 Package documentation
 =====================
 
 Yamlizable.load_ :
-    A class method that exists on all ``yamlize`` subclasses to de-serialize YAML into an instance
-    of that subclass.
+    A class method that exists on all ``Yamlizable`` subclasses to de-serialize YAML into an
+    instance of that subclass.
 
 Yamlizable.dump_ :
-    A class method that exists on all ``yamlize`` subclasses to serialize an instance of that
+    A class method that exists on all ``Yamlizable`` subclasses to serialize an instance of that
     subclass to YAML.
 
 Attributes_ : a YAML scalar kind of
@@ -50,11 +63,10 @@ Sequences_ : a YAML sequence of objects
     This corresponds to a sequence of objects, and can be used to simply validate types (by using
     something like ``yamlize.StrList``), or to convert a list of other Python yamlizable objects.
 
-
 .. _Yamlizeable.load:
 
-Yamlizable.load
-----------------
+``Yamlizable.load``
+-------------------
 Before seeing much about ``yamlize``, this may be out of context, but it is important to know.
 
 arguments : str, or file
@@ -68,8 +80,8 @@ return type : instance of subclass
 
 .. _Yamlizeable.dump:
 
-Yamlizable.dump
-----------------
+``Yamlizable.dump``
+-------------------
 arguments : object instance, and file (optional)
     All subclasses implement a ``dump`` class method. The class method is then used to write YAML
     from Python object instances.
@@ -182,9 +194,11 @@ attribute name.
 
 .. _attribute types:
 
-Using ``type`` force specified type
-+++++++++++++++++++++++++++++++++++
-The Attributes_ ``type`` argument can be used to perform type validation on the input YAML.
+Using ``type`` to for type data validation
+++++++++++++++++++++++++++++++++++++++++++
+The Attributes_ ``type`` argument can be used to perform type data validation on the input YAML.
+(Sorry for using "type data validation" instead of "data type validation", but this way one can
+search "data validation" within the documentation and find all relevant topics.)
 
 >>> from yamlize import yaml_object, Attribute
 >>>
@@ -383,7 +397,9 @@ Failing:
 
 Sequences
 ---------
-A ``yamlize.Sequence`` should be used effectively as a Python strong-typed list.
+A ``yamlize.Sequence`` should be used effectively as a Python strong-typed list. Unlike the other
+``yamlize`` decorators / classes, a ``Sequence`` cannot have attributes. The lack of attributes is a
+functionality of YAML itself; a YAML sequence cannot have attributes.
 
 >>> from yamlize import yaml_object, yaml_list
 >>>
@@ -528,10 +544,187 @@ Note this will retain block or flow style and comments when dumping back to yaml
   last: Last    #
 <BLANKLINE>
 
+
+Customization
+=============
+We have already discussed the Yamlizable.load_ and Yamlizable.dump_ class methods. These two
+methods only get called to open / create the "root" of the document tree and begin the parsing. The
+actual bulk of the work is done using Yamlizable.from_yaml_ and Yamlizable.to_yaml_.
+
+
+.. _Yamlizable.from_yaml:
+
+``Yamizable.from_yaml``
+-----------------------
+The ``from_yaml`` method is also a class method that is used to create a new instance for a
+``Yamlizable`` object.
+
+arguments :
+    ``loader`` : Loader (See |ruamel.yaml|_)
+        A loader class, this should generally be used to parse the node, and register the created
+        object.
+    ``node`` : Node (See |ruamel.yaml|_)
+        A YAML node.
+    ``round_trip_data`` : ``yamlize.round_trip_data.RoundTripData``
+        An object for retaining round trip data. This is passed from the parent object (which may
+        or may not be ``Yamlizable``. ``Yamlizable`` objects have their own ``RoundTripData``
+        instances, but non-``Yamlizable`` objects do not (i.e. int, float, str). In order to retain
+        non-``Yamlizable`` round trip data, a ``RoundTripData`` instance can store additional data
+        from other nodes.
+
+return type : ``Yamlizable`` subclass instance
+    The return type should be an instance of the subclass.
+
+This method can be used effectively in place of a custom resolver.
+
+
+.. _Yamlizable.from_yaml for data validation:
+
+Data validation with ``Yamlizable.from_yaml``
++++++++++++++++++++++++++++++++++++++++++++++
+Alternative to using `properties for data validation`_, you can override the Yamlizable.from_yaml_
+classmethod to supply custom data validation.
+
+>>> from yamlize import yaml_object, Object, Attribute, YamlizingError
+>>>
+>>> @yaml_object(Attribute('x', type=float),
+...              Attribute('y', type=float))
+... class PositivePoint2(object):
+...
+...     @classmethod
+...     def from_yaml(cls, loader, node, round_trip_data=None):
+...         # from_yaml.__func__ is the unbound class method
+...         self = Object.from_yaml.__func__(PositivePoint2, loader, node, round_trip_data)
+...
+...         if self.x < 0.0 or self.y < 0.0:
+...             raise YamlizingError('Point x and y values must be positive', node)
+...
+...         return self
+>>>
+>>> PositivePoint2.load(u'{ x: -0.0000001, y: 1.0}') # doctest: +IGNORE_EXCEPTION_DETAIL
+Traceback (most recent call last):
+    ...
+YamlizingError: Point x and y values must be positive
+start:   in "<unicode string>", line 1, column 1:
+    { x: -0.0000001, y: 1.0}
+    ^ (line: 1)
+end:   in "<unicode string>", line 1, column 25:
+    { x: -0.0000001, y: 1.0}
+                            ^ (line: 1)
+
+Subclassing
++++++++++++
+You can also use ``Yamlizable.from_yaml`` for handling subclassing.
+
+>>> from yamlize import yamlizable, yaml_list
+>>>
+>>> @yamlizable(Attribute('shape', type=str))
+... class Shape(object):
+...
+...     @classmethod
+...     def from_yaml(cls, loader, node, round_trip_data):
+...         # the node is a map, let's find the "shape" key
+...         for key_node, val_node in node.value:
+...             key = loader.construct_object(key_node)
+...             if key == 'shape':
+...                 subclass_name = loader.construct_object(val_node)
+...                 break
+...         else:
+...             raise YamlizingError('Missing "shape" key', node)
+...
+...         subclass = {
+...             'Circle' : Circle,
+...             'Square' : Square,
+...             'Rectangle' : Rectangle
+...             }[subclass_name]
+...
+...         # from_yaml.__func__ is the unbound classmethod
+...         return Object.from_yaml.__func__(subclass, loader, node, round_trip_data)
+
+>>> @yamlizable(Attribute('radius', type=float))
+... class Circle(Shape):
+...     pass
+...
+>>> @yamlizable(Attribute('side', type=float))
+... class Square(Shape):
+...     pass
+...
+>>> @yamlizable(Attribute('length', type=float),
+...              Attribute('width', type=float))
+... class Rectangle(Shape):
+...     pass
+...
+>>> @yaml_list(Shape)
+... class Shapes(object):
+...     pass
+...
+>>> shapes = Shapes.load(u'''
+... - {shape: Circle, radius: 1.0}
+... - {shape: Square, side: 2.0}
+... - {shape: Rectangle, length: 3.0, width: 4.0}
+... ''')
+...
+>>> print(Shapes.dump(shapes))
+- {shape: Circle, radius: 1.0}
+- {shape: Square, side: 2.0}
+- {shape: Rectangle, length: 3.0, width: 4.0}
+<BLANKLINE>
+
+
+.. _properties for data validation:
+
+Data validation with properties
+-------------------------------
+Some basic validation is available through the use of properties. The positive of this is that you
+will get very accurate line numbers for the failing node. The detractor is that you need to
+implement a ``__new__`` which isn't very standard, but is required because Yamlizable.load_ does
+not call ``__init__``.
+
+>>> from yamlize import Object, AttributeCollection
+>>>
+>>> class PositivePoint(Object):
+...
+...     attributes = AttributeCollection(Attribute('x', type=float),
+...                                      Attribute('y', type=float))
+...
+...     def __new__(cls):
+...         self = Object.__new__(cls)
+...         self._x = 0.0
+...         return self
+...
+...     @property
+...     def x(self):
+...         return self._x
+...
+...     @x.setter
+...     def x(self, x):
+...         if x < 0.0:
+...             raise ValueError('Cannot set PositivePoint.x to {}'.format(x))
+...         self._x = x
+>>>
+>>> PositivePoint.load(u'{ x: -0.0000001, y: 1.0}') # doctest: +IGNORE_EXCEPTION_DETAIL
+Traceback (most recent call last):
+    ...
+YamlizingError: Failed to assign attribute `x` to `-1e-07`, got: Cannot set PositivePoint.x to -1e-07
+start:   in "<unicode string>", line 1, column 6:
+    { x: -0.0000001, y: 1.0}
+         ^ (line: 1)
+end:   in "<unicode string>", line 1, column 16:
+    { x: -0.0000001, y: 1.0}
+                   ^ (line: 1)
+
+As noted this is rather cumbersome, so you may wish to use `Yamlizable.from_yaml for data
+validation`_ instead.
+
 Why not just serialze with PyYAML?
 ==================================
 PyYAML serialization requires (without custom implicit tag resolvers) that your YAML indicate the
-Python object being represented. For example:
+Python object being represented. It may also not be possible to have a specific map represent
+specific types, and I don't think the root of a document can represent a single object. It may not
+be possible for multiple implicit resolvers to distinguish between a variety of Python objects.
+Also, using ``yamlize`` the YAML definition and class definition are one and the same; whereas with
+custom resolvers for different object types you would need to also clarify the YAML tree of where a
+certain type of object may exist. For example:
 
 >>> class A(object):
 ...     def __init__(self, attr):

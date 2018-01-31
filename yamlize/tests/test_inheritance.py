@@ -4,6 +4,7 @@ import re
 from yamlize import yamlizable
 from yamlize import Attribute
 from yamlize import Dynamic
+from yamlize import Object
 from yamlize import yaml_keyed_list
 from yamlize import yaml_list
 from yamlize import yaml_map
@@ -180,6 +181,56 @@ thing3:
         self.assertEqual('an actual string', things['thing3'].str_attr)
         self.assertEqual(TestSubclassing.multiple_merge, actual)
 
+    def test_object_subclassing2(self):
+        @yamlizable(Attribute('shape', type=str))
+        class Shape(object):
+
+            @classmethod
+            def from_yaml(cls, loader, node, round_trip_data):
+                # the node is a map, let's find the "shape" key
+                for key_node, val_node in node.value:
+                    key = loader.construct_object(key_node)
+                    if key == 'shape':
+                        subclass_name = loader.construct_object(val_node)
+                        break
+                else:
+                    raise YamlizingError('Missing "shape" key', node)
+
+                subclass = {
+                    'Circle' : Circle,
+                    'Square' : Square,
+                    'Rectangle' : Rectangle
+                    }[subclass_name]
+
+                # from_yaml.__func__ is the unbound class method
+                return Object.from_yaml.__func__(subclass, loader, node, round_trip_data)
+
+        @yamlizable(Attribute('radius', type=float))
+        class Circle(Shape):
+            pass
+
+        @yamlizable(Attribute('side', type=float))
+        class Square(Shape):
+            pass
+
+        @yamlizable(Attribute('length', type=float),
+                     Attribute('width', type=float))
+        class Rectangle(Shape):
+            pass
+
+        @yaml_list(Shape)
+        class Shapes(object):
+            pass
+
+        input_str = '\n'.join(l.strip() for l in '''
+        - {shape: Circle, radius: 1.0}
+        - {shape: Square, side: 2.0}
+        - {shape: Rectangle, length: 3.0, width: 4.0}
+        '''.split('\n') if l)
+
+        shapes = Shapes.load(input_str)
+
+        self.assertEqual(Shapes.dump(shapes), input_str)
 
 @yamlizable(Attribute('name', type=str),
             Attribute('req1', type=int),

@@ -57,7 +57,7 @@ class Yamlizable(object):
         loader = Loader(stream)
         try:
             node = loader.get_single_node()
-            return cls.from_yaml(loader, node)
+            return cls.from_yaml(loader, node, None)
         finally:
             loader.dispose()
 
