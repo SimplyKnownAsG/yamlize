@@ -1,6 +1,5 @@
 from setuptools import setup, find_packages
 
-
 setup(
     name='yamlize',
 
@@ -9,8 +8,8 @@ setup(
     # https://packaging.python.org/en/latest/single_source_version.html
     version='0.5.0',
 
-    description='A sample Python project',
-    long_description='see https://github.com/SimplyKnownAsG/yamlize',
+    description='yamlize, a package for Python object serialization and data validaiton.',
+    long_description='see https://github.com/SimplyKnownAsG/yamlize/blob/master/README.rst',
 
     # The project's main homepage.
     url='https://github.com/SimplyKnownAsG/yamlize',
