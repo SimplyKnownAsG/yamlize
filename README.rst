@@ -63,15 +63,20 @@ Sequences_ : a YAML sequence of objects
     This corresponds to a sequence of objects, and can be used to simply validate types (by using
     something like ``yamlize.StrList``), or to convert a list of other Python yamlizable objects.
 
+
 .. _Yamlizeable.load:
 
 ``Yamlizable.load``
 -------------------
 Before seeing much about ``yamlize``, this may be out of context, but it is important to know.
+All subclasses implement a ``load`` class method. The class method is then used to create class
+instances from YAML (again, ``yamlize`` does not call ``__init__``, only ``__new__``).
 
-arguments : str, or file
-    All subclasses implement a ``load`` class method. The class method is then used to create
-    instances from YAML. The load method can accept either a YAML string, or a file-like object.
+arguments :
+    ``stream`` : str or file
+        The load method can accept either a YAML string, or a file-like object.
+    ``Loader`` : ``ruamel.yaml.Loader``, optional
+        A YAML loader; it has only been tested with the ``ruamel.yaml.RoundTripLoader``.
 
 return type : instance of subclass
     This returns an instance of the subclass used. So, for example, ``Thing.load('...')`` returns
@@ -82,15 +87,19 @@ return type : instance of subclass
 
 ``Yamlizable.dump``
 -------------------
-arguments : object instance, and file (optional)
-    All subclasses implement a ``dump`` class method. The class method is then used to write YAML
-    from Python object instances.
+All subclasses implement a ``dump`` class method. The class method is then used to write YAML from
+Python object instances.
 
-    The dump method has a second optional argument of a file-like object.
+arguments :
+    ``data`` : instance of subclass
+        This is the object to be written, it should be of the same class as the type being used;
+        e.g. ``Thing.dump(data=thing_instance)``
+    ``stream`` : file-like object, optional
+        If provided, ``dump`` writes to the stream, otherwise it returns a string.
 
-return type : None if file was provided, otherwise string
-    This returns an instance of the subclass used. So, for example, ``Thing.load('...')`` returns
-    an instance of a ``Thing``.
+return type : None if ``stream`` was provided, otherwise string
+    If ``stream`` was provided, the output is written to the stream, otherwise returns an instance
+    of a string.
 
 
 .. _Objects:
