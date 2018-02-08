@@ -93,3 +93,32 @@ class IntList(object):
     pass
 
 
+def build_schema(klass):
+    from .yamlizable import Strong
+
+    if issubclass(klass, Object):
+        schema = {}
+        for attribute in klass.attributes:
+            schema[attribute.key] = build_schema(attribute.type)
+
+        if issubclass(klass, Map):
+            key = build_schema(klass.attributes.key_type)
+            schema[key] = build_schema(klass.attributes.value_type)
+
+        elif issubclass(klass, KeyedList):
+            key = '{{{}.{}}}'.format(klass.attributes.item_type.__name__,
+                                     klass.attributes.key_name)
+            schema[key] = build_schema(klass.attributes.item_type)
+
+
+    elif issubclass(klass, Sequence):
+        schema = [build_schema(klass.item_type)]
+
+    elif issubclass(klass, Strong):
+        schema = klass._Strong__type.__name__
+
+    else:
+        schema = str(klass)
+
+    return schema
+
