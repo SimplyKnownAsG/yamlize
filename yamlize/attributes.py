@@ -79,13 +79,19 @@ class Attribute(_Attribute):
     default : value or NODEFAULT
         default value if not supplied in YAML. If ``default=NODEFAULT``, then
         the attribute must be supplied.
+    storage_name : str
+        ``'_yamlized_' + name``, stored as a separate attribute for speed.
     """
 
-    __slots__ = ('name', 'key', 'type', 'default')
+    __slots__ = ('_name', 'storage_name', 'key', 'type', 'default')
 
-    def __init__(self, name, key=None, type=NODEFAULT, default=NODEFAULT):
+    def __init__(self, name=None, key=None, type=NODEFAULT, default=NODEFAULT, validator=None):
         from yamlize.yamlizable import Yamlizable, Dynamic
-        self.name = name
+
+        # initialize _name for .name assignment
+        self._name = None
+        self.storage_name = None
+        self.name = name  # sets storage_name
         self.key = key or name
         self.default = default
 
@@ -95,6 +101,16 @@ class Attribute(_Attribute):
             self.type = Yamlizable.get_yamlizable_type(type)
 
     @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
+        if name is not None:
+            self.storage_name = '_yamlized_' + name
+
+    @property
     def has_default(self):
         return self.default is not NODEFAULT
 
@@ -102,7 +118,7 @@ class Attribute(_Attribute):
     def is_required(self):
         return self.default is NODEFAULT
 
-    def ensure_type(self, data, node):
+    def ensure_type(self, data, node=None):
         if isinstance(data, self.type) or data == self.default:
             return data
 
@@ -161,14 +177,20 @@ class Attribute(_Attribute):
 
             val_node = dumper.represent_data(data)
 
-        key_node = self._represent_key(dumper)
+        key_node = dumper.represent_data(self.key)
         node_items.append((key_node, val_node))
 
-    def _represent_key(self, dumper):
-        return dumper.represent_data(self.key)
-
     def get_value(self, obj):
-        result = getattr(obj, self.name, self.default)
+        return self.__get__(obj)
+
+    def set_value(self, obj, value):
+        self.__set__(obj, value)
+
+    def __get__(self, obj, owner=None):
+        if obj is None:
+            return self
+
+        result = getattr(obj, self.storage_name, self.default)
 
         if result is NODEFAULT:
             raise YamlizingError('Attribute `{}` was not defined on `{}`'
@@ -176,8 +198,11 @@ class Attribute(_Attribute):
 
         return result
 
-    def set_value(self, obj, value):
-        setattr(obj, self.name, value)
+    def __set__(self, obj, data):
+        setattr(obj, self.storage_name, self.ensure_type(data))
+
+    def __delete__(self, obj):
+        delattr(obj, self.storage_name)
 
 
 class MapItem(_Attribute):
