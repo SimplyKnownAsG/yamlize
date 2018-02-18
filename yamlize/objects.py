@@ -1,5 +1,6 @@
 import inspect
 
+import six
 import ruamel.yaml
 
 from .yamlizable import Yamlizable
@@ -66,16 +67,53 @@ class _AliasLink(object):
         return am_parent
 
 
-class Object(Yamlizable):
+class ObjectType(type):
 
-    __slots__ = ('__merge_parents', '__complete_inheritance', '__round_trip_data')
+    def __init__(cls, name, bases, data):
+        from yamlize.attribute_collection import AttributeCollection
+        from yamlize.attributes import Attribute
+
+        attributes = data.get('attributes')
+        if attributes is None:
+            attributes = AttributeCollection()
+
+        elif not isinstance(attributes, AttributeCollection):
+            attributes = AttributeCollection(*attributes)
+
+        type.__init__(cls, name, bases, data)
+
+        # not sure why I couldn't just overwrite data['attributes'], but it did not work
+        cls.attributes = attributes
+
+        for attr_name, attr_val in data.items():
+            if isinstance(attr_val, Attribute) and attr_val.name is None:
+                attr_val.name = attr_name
+
+        for attribute in attributes:
+            if not hasattr(cls, attribute.name):
+                setattr(cls, attribute.name, attribute)
+
+        for parent_cls in cls.__mro__[1:]:
+            if hasattr(parent_cls, 'attributes'):
+                for attribute in parent_cls.attributes:
+                    setattr(cls, attribute.name, attribute)
+
+    def __setattr__(cls, attr_name, value):
+        from yamlize.attributes import Attribute
+        type.__setattr__(cls, attr_name, value)
+
+        if isinstance(value, Attribute):
+            cls.attributes.add(value)
+
+
+class Object(six.with_metaclass(ObjectType, Yamlizable)):
+
+    __slots__ = ('__round_trip_data',)
 
     attributes = ()
 
     def __new__(cls, *args, **kwargs):
         self = Yamlizable.__new__(cls)
-        self.__merge_parents = []
-        self.__complete_inheritance = False
         self.__round_trip_data = RoundTripData(None)
         return self
 
@@ -126,7 +164,7 @@ class Object(Yamlizable):
             self.__round_trip_data = RoundTripData(val_node)
             loader.constructed_objects[val_node] = self
         else:
-            self.__complete_inheritance = True
+            self.__round_trip_data._complete_inheritance = True
             self.__add_parent(loader, val_node)
 
         key_attribute = cls.attributes.by_name.get(key_name, None)
@@ -173,12 +211,13 @@ class Object(Yamlizable):
         self.__apply_defaults(node)
 
     def __add_parent(self, loader, parent_node):
-        self.__merge_parents.append(_AliasLink(loader.constructed_objects[parent_node]))
+        self.__round_trip_data._merge_parents.append(
+            _AliasLink(loader.constructed_objects[parent_node]))
 
     def __apply_defaults(self, node):
         applied_attrs = set(self.__attribute_order)
         missing_required_attrs = self.attributes.required - applied_attrs
-        links = self.__merge_parents or []
+        links = self.__round_trip_data._merge_parents or []
 
         # using a separate set allows us to inherit the last value from
         # multiple parents
@@ -263,10 +302,10 @@ class Object(Yamlizable):
             self.__attribute_order
         )
 
-        if self.__merge_parents is not None:
+        if self.__round_trip_data._merge_parents is not None:
             actual_parents = []
 
-            for merge_parent in self.__merge_parents:
+            for merge_parent in self.__round_trip_data._merge_parents:
                 if merge_parent.is_parent(self, dumper, represented_attrs):
                     actual_parents.append(merge_parent)
 

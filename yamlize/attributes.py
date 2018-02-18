@@ -83,17 +83,20 @@ class Attribute(_Attribute):
         ``'_yamlized_' + name``, stored as a separate attribute for speed.
     """
 
-    __slots__ = ('_name', 'storage_name', 'key', 'type', 'default')
+    __slots__ = ('_name', 'storage_name', 'key', 'type', 'default', 'fvalidator', 'doc')
 
-    def __init__(self, name=None, key=None, type=NODEFAULT, default=NODEFAULT, validator=None):
+    def __init__(self, name=None, key=None, type=NODEFAULT, default=NODEFAULT, validator=None,
+                 doc=None):
         from yamlize.yamlizable import Yamlizable, Dynamic
 
         # initialize _name for .name assignment
         self._name = None
         self.storage_name = None
-        self.name = name  # sets storage_name
-        self.key = key or name
+        self.key = key
+        self.name = name  # sets storage_name and key if applicable
         self.default = default
+        self.fvalidator = validator
+        self.doc = doc
 
         if type == NODEFAULT:
             self.type = Dynamic
@@ -107,8 +110,12 @@ class Attribute(_Attribute):
     @name.setter
     def name(self, name):
         self._name = name
+
         if name is not None:
             self.storage_name = '_yamlized_' + name
+
+        if self.key is None:
+            self.key = name
 
     @property
     def has_default(self):
@@ -198,11 +205,18 @@ class Attribute(_Attribute):
 
         return result
 
-    def __set__(self, obj, data):
-        setattr(obj, self.storage_name, self.ensure_type(data))
+    def __set__(self, obj, value):
+        if self.fvalidator is not None:
+            if self.fvalidator(obj, value) is False:
+                raise ValuerError('Cannot set `{}.{}` to invalid value `{}`'
+                                  .format(obj.__class__.__name__, self.name, value))
+        setattr(obj, self.storage_name, value)
 
     def __delete__(self, obj):
         delattr(obj, self.storage_name)
+
+    def validator(self, fvalidator):
+        return type(self)(self.name, self.key, self.type, self.default, fvalidator, self.doc)
 
 
 class MapItem(_Attribute):

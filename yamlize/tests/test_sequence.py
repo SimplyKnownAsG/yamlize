@@ -51,9 +51,9 @@ class AnimalWithFriends(object):
 class AnimalSequence(object):
     pass
 
-AnimalWithFriends.attributes.add(Attribute(name='friends',
-                                           type=AnimalSequence,
-                                           default=None))
+AnimalWithFriends.friends = Attribute(name='friends',
+                                      type=AnimalSequence,
+                                      default=None)
 
 
 class Test_two_way(unittest.TestCase):

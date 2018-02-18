@@ -692,24 +692,17 @@ not call ``__init__``.
 >>> from yamlize import Object, AttributeCollection
 >>>
 >>> class PositivePoint(Object):
-...
-...     attributes = AttributeCollection(Attribute('x', type=float),
-...                                      Attribute('y', type=float))
-...
-...     def __new__(cls):
-...         self = Object.__new__(cls)
-...         self._x = 0.0
-...         return self
-...
-...     @property
-...     def x(self):
-...         return self._x
-...
-...     @x.setter
+... 
+...     x = Attribute(type=float)
+... 
+...     # raise a custom exception
+...     @x.validator
 ...     def x(self, x):
 ...         if x < 0.0:
 ...             raise ValueError('Cannot set PositivePoint.x to {}'.format(x))
-...         self._x = x
+...
+...     # or, return False when the value is not valid
+...     y = Attribute(type=float, validator=lambda self, y: y >= 0)
 >>>
 >>> PositivePoint.load(u'{ x: -0.0000001, y: 1.0}') # doctest: +IGNORE_EXCEPTION_DETAIL
 Traceback (most recent call last):

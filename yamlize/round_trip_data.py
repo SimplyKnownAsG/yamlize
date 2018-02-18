@@ -11,12 +11,15 @@ class _AnchorNode(object):
 
 class RoundTripData(object):
 
-    __slots__ = ('_rtd', '_kids_rtd', '_name_order')  # can't use private variables with six
+    __slots__ = ('_rtd', '_kids_rtd', '_name_order', '_merge_parents',
+                 '_complete_inheritance')  # can't use private variables with six
 
     def __init__(self, node):
         self._rtd = {}
         self._kids_rtd = {}
         self._name_order = []
+        self._merge_parents = []
+        self._complete_inheritance = False
 
         if node is not None:
             for key in dir(node):
@@ -29,6 +32,13 @@ class RoundTripData(object):
                     continue
 
                 self._rtd[key] = attr
+
+    def __str__(self):
+        msg = 'RoundTripData:'
+        msg += '\n    name_order: {}'.format(', '.join(self._name_order))
+        msg += '\n    rtd: {{{}}}'.format(', '.join('{}: {}'.format(k, v)
+                                                    for k, v in self._rtd.items()))
+        return msg
 
     def __reduce__(self):
         """

@@ -20,6 +20,7 @@ class Animal(object):
         self.name = name
         self.age = age
 
+assert Animal.name != None
 
 @yamlizable(Attribute(name='one', type=int),
             Attribute(name='array', type=list))
@@ -33,9 +34,9 @@ class TypeCheck(object):
 @yamlizable(Attribute(name='name', type=str))
 class AnimalWithFriend(object):
     pass
-AnimalWithFriend.attributes.add(Attribute(name='friend',
-                                          type=AnimalWithFriend,
-                                          default=None))
+AnimalWithFriend.friend = Attribute(name='friend',
+                                    type=AnimalWithFriend,
+                                    default=None)
 
 
 class Test_from_yaml(unittest.TestCase):

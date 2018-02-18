@@ -29,15 +29,21 @@ class AttributeCollection(object):
         return {attr for attr in self if attr.is_required}
 
     def add(self, attr):
-        if attr.key in self.by_key:
+        existing = self.by_key.get(attr.key, None)
+        if existing is not None and existing is not attr:
             raise KeyError('AttributeCollection already contains an entry for '
                            '{}, previously defined: {}'
-                           .format(attr.key, self.by_key[attr.key]))
+                           .format(attr.key, existing))
+        elif existing is attr:
+            return
 
-        if attr.name in self.by_name:
+        existing = self.by_name.get(attr.name, None)
+        if existing is not None and existing is not attr:
             raise KeyError('AttributeCollection already contains an entry for '
                            '{}, previously defined: {}'
-                           .format(attr.name, self.by_name[attr.name]))
+                           .format(attr.name, existing))
+        elif existing is attr:
+            return
 
         self.by_key[attr.key] = attr
         self.by_name[attr.name] = attr

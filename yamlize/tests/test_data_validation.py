@@ -1,32 +1,37 @@
 import unittest
 
-from yamlize import Object, AttributeCollection, YamlizingError, Attribute, yaml_object
+from yamlize import Object, YamlizingError, Attribute, yaml_object
+
+
+class PositivePoint(Object):
+
+    x = Attribute(type=float)
+
+    @x.validator
+    def x(self, x):
+        if x < 0.0:
+            raise ValueError('Cannot set PositivePoint.x to {}'.format(x))
+
+    y = Attribute(type=float, validator=lambda self, y: y > 0)
+
 
 class TestDataValidation(unittest.TestCase):
 
-    def test_properties(self):
-        class PositivePoint(Object):
+    def test_assign_properties(self):
+        p = PositivePoint()
+        p.x = 99
+        with self.assertRaises(ValueError):
+            p.x = -1.0
+        p.y = 1e99
+        with self.assertRaises(ValueError):
+            p.x = -1.0e-99
 
-            attributes = AttributeCollection(Attribute('x', type=float),
-                                             Attribute('y', type=float))
-
-            def __new__(cls):
-                self = Object.__new__(cls)
-                self._x = 0.0
-                return self
-
-            @property
-            def x(self):
-                return self._x
-
-            @x.setter
-            def x(self, x):
-                if x < 0.0:
-                    raise ValueError('Cannot set PositivePoint.x to {}'.format(x))
-                self._x = x
+    def test_load_properties(self):
+        with self.assertRaises(YamlizingError):
+            PositivePoint.load(u'{x: -0.0000001, y: 1.0}')
 
         with self.assertRaises(YamlizingError):
-            PositivePoint.load(u'{ x: -0.0000001, y: 1.0}') # doctest: +IGNORE_EXCEPTION_DETAIL
+            PositivePoint.load(u'{x: 0.0000001, y: -0.00001}')
 
     def test_from_yaml(self):
 
@@ -46,6 +51,15 @@ class TestDataValidation(unittest.TestCase):
 
         with self.assertRaises(YamlizingError):
             PositivePoint2.load(u'{ x: -0.0000001, y: 1.0}') # doctest: +IGNORE_EXCEPTION_DETAIL
+
+
+class Person(Object):
+
+    first = Attribute(type=str)
+
+    last = Attribute(type=str)
+
+    full = Attribute(type=str)
 
 
 if __name__ == '__main__':
