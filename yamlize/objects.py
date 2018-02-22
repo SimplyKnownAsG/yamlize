@@ -73,6 +73,8 @@ class ObjectType(type):
         from yamlize.attribute_collection import AttributeCollection
         from yamlize.attributes import Attribute
 
+        type.__init__(cls, name, bases, data)
+
         attributes = data.get('attributes')
         if attributes is None:
             attributes = AttributeCollection()
@@ -80,14 +82,13 @@ class ObjectType(type):
         elif not isinstance(attributes, AttributeCollection):
             attributes = AttributeCollection(*attributes)
 
-        type.__init__(cls, name, bases, data)
-
         # not sure why I couldn't just overwrite data['attributes'], but it did not work
         cls.attributes = attributes
 
         for attr_name, attr_val in data.items():
             if isinstance(attr_val, Attribute) and attr_val.name is None:
                 attr_val.name = attr_name
+                attributes.add(attr_val)
 
         for attribute in attributes:
             if not hasattr(cls, attribute.name):

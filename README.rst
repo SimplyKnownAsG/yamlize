@@ -7,9 +7,17 @@ yamlize
 
 ``yamlize`` is a package for serialization of Python objects to and from YAML. ``yamlize``:
 
-* Retains round trip data (e.g. it retains comments, spacing, and other markup options).
+* Retains round trip data
+
+  * comments
+  * spacing
+  * alias/anchor names
+  * YAML merge tags,
+  * and other markup options
+
 * Checks types
 * Sets defaults.
+* Allows for arbirtrary data validation.
 * Does not require ``!!python/object:`` type annotations within the YAML.
 
 .. image:: https://travis-ci.org/SimplyKnownAsG/yamlize.svg?branch=master
@@ -43,10 +51,10 @@ Yamlizable.dump_ :
     A class method that exists on all ``Yamlizable`` subclasses to serialize an instance of that
     subclass to YAML.
 
-Attributes_ : a YAML scalar kind of
+Attributes_ : a YAML scalar, kind of
     ``yamlize`` doesn't really have support for scalars, but it can do type checking on scalar
-    types. An ``Attribute`` is used to define an instance attribute of something created by
-    ``yamlize``.
+    types and data validation. An ``Attribute`` is used to define an instance attribute of something
+    created by ``yamlize``.
 
 Objects_ : a YAML map converted to a Python object
     ``yamlize`` class for serialization to and from a YAML map. Each key of the YAML map is an
@@ -87,8 +95,8 @@ return type : instance of subclass
 
 ``Yamlizable.dump``
 -------------------
-All subclasses implement a ``dump`` class method. The class method is then used to write YAML from
-Python object instances.
+All subclasses implement a ``dump`` class method. The class method is used to write YAML from Python
+object instances.
 
 arguments :
     ``data`` : instance of subclass
@@ -107,12 +115,13 @@ return type : None if ``stream`` was provided, otherwise string
 Objects
 -------
 
->>> from yamlize import Object, AttributeCollection, Attribute
+>>> from yamlize import Object, Attribute
 >>>
 >>> class Pet(Object):
 ...
-...     attributes = AttributeCollection(Attribute(name='name'),
-...                                      Attribute(name='age'))
+...     name = Attribute()  # declare a yamlize.Attribute
+...
+...     age = Attribute()
 >>>
 >>> lucy = Pet.load(u'''
 ... name: Lucy  # yay it is some YAML!
@@ -130,27 +139,6 @@ name: Lucy  # yay it is some YAML!
 age: 8
 <BLANKLINE>
 
-``yamlize`` also comes with a decorator to create yamlizable subclasses. The above can also be
-written:
-
->>> from yamlize import yaml_object, Attribute
->>>
->>> @yaml_object(Attribute(name='name'),
-...              Attribute(name='age'))
-... class Pet(object):
-...     # Note ^ lowercase object instead of yamlize.Object
-...     pass
->>>
->>> lucy2 = Pet.load(u'''
-... name: Lucy  # yay it is some YAML!
-... age: 8
-... ''')
-...
->>> print(Pet.dump(lucy2))
-name: Lucy  # yay it is some YAML!
-age: 8
-<BLANKLINE>
-
 
 .. _Attributes:
 
@@ -161,8 +149,10 @@ Attributes_. An Attribute is a way to map between YAML keys/values to a Python o
 
 The Attribute constructor has the following arguments:
 
-``name`` : str
-    Name of the Python object's attribute
+``name`` : str, optional
+    Name of the Python object's attribute. By default this will be the name provided in the
+    declaration (i.e. in the ``Pet`` example above, we could have written ``age =
+    Attribute(name='age')``, but that is a bit redundant.
 
 ``key`` : str, optional (See `renaming keys`_)
     Key in a YAML file. For example, if you had an attribute with an underscore (_) in it, and
@@ -176,6 +166,12 @@ The Attribute constructor has the following arguments:
 ``default`` : optional (See `attribute defaults`_)
     Provides a default value if the attribute is not defined within the YAML.
 
+``validator``: callable, optional (See `attribute validators`_)
+    Callable used to confirm a value is valid the signature is ``validator(value) -> False`` to
+    indicate an invalid value, or a custom exception can be raised. Note: ``False is False`` and
+    nothing else is, so don't return ``0``, ``[]``, ``{}``, etc. when you meant ``False``.
+
+
 .. _renaming keys:
 
 Using ``key`` to rename YAML inputs
@@ -183,11 +179,11 @@ Using ``key`` to rename YAML inputs
 The Attributes_ ``key`` argument can be used to "map" from a YAML input name to the Python object's
 attribute name.
 
->>> from yamlize import yaml_object, Attribute
+>>> from yamlize import Object, Attribute
 >>>
->>> @yaml_object(Attribute(name='python_name', key='YAML key'))
-... class ThingWithAttribute(object):
-...     pass
+>>> class ThingWithAttribute(Object):
+...
+...     python_name = Attribute(key='YAML key')
 >>>
 >>> twa = ThingWithAttribute.load('YAML key: this is the value from YAML')
 >>> twa.python_name
@@ -209,13 +205,14 @@ The Attributes_ ``type`` argument can be used to perform type data validation on
 (Sorry for using "type data validation" instead of "data type validation", but this way one can
 search "data validation" within the documentation and find all relevant topics.)
 
->>> from yamlize import yaml_object, Attribute
+>>> from yamlize import Object, Attribute
 >>>
->>> @yaml_object(Attribute(name='my_int', type=int),
-...              Attribute(name='my_float', type=float),
-...              Attribute(name='my_str', type=str))
-... class StronglyTypedThing(object):
-...     pass
+>>> class StronglyTypedThing(Object):
+...
+...     my_int = Attribute(type=int)
+...     my_float = Attribute(type=float)
+...     my_str = Attribute(type=str)
+...
 >>>
 >>> stt = StronglyTypedThing.load(u'''
 ... my_int: 42
@@ -268,6 +265,7 @@ end:   in "<unicode string>", line 4, column 14:
     my_str: 1.234    # YAML parsers generate a fl ...
                  ^ (line: 4)
 
+
 .. _attribute defaults:
 
 Using ``default`` to specify default Python object attribute values
@@ -275,13 +273,12 @@ Using ``default`` to specify default Python object attribute values
 The Attributes_ ``default`` argument can be used to simplify YAML input when an attribute can have a
 default value.
 
->>> from yamlize import yaml_object, Attribute
+>>> from yamlize import Object, Attribute
 >>>
->>> @yaml_object(Attribute(name='x'),
-...              Attribute(name='y'),
-...              Attribute(name='z', default=0.0))
-... class Point(object):
-...     pass
+>>> class Point(Object):
+...     x = Attribute()
+...     y = Attribute()
+...     z = Attribute(default=0.0)
 >>>
 >>> p0 = Point.load(u'''
 ... x: 1.0
@@ -309,7 +306,63 @@ end:   in "<unicode string>", line 4, column 1:
 
 .. warning::
     The default argument *should* work more similar to ``collections.defaultdict`` accepting a
-    callable object. This will likely be changed in future versions.
+    callable object. This will likely be changed in future versions. The issue with this is that we
+    need to known when a value should and should not be written out.
+
+
+.. _attribute validators:
+
+Data validation with Attribute validators
++++++++++++++++++++++++++++++++++++++++++
+Attribute data validation is available through validators. Your validator method will be called
+whenever assigning a value to the attribute. You should get very accurate line numbers for the
+failing YAML node. 
+
+>>> from yamlize import Object, AttributeCollection
+>>>
+>>> class PositivePoint(Object):
+... 
+...     x = Attribute(type=float)
+... 
+...     # raise a custom exception
+...     @x.validator
+...     def x(x):
+...         if x < 0.0:
+...             raise ValueError('Cannot set PositivePoint.x to {}'.format(x))
+...
+...     # or, return False when the value is not valid
+...     y = Attribute(type=float, validator=lambda y: y >= 0)
+>>>
+>>> PositivePoint.load(u'{ x: -0.0000001, y: 1.0}')  # doctest: +IGNORE_EXCEPTION_DETAIL
+Traceback (most recent call last):
+    ...
+YamlizingError: Failed to assign attribute `x` to `-1e-07`, got: Cannot set PositivePoint.x to -1e-07
+start:   in "<unicode string>", line 1, column 6:
+    { x: -0.0000001, y: 1.0}
+         ^ (line: 1)
+end:   in "<unicode string>", line 1, column 16:
+    { x: -0.0000001, y: 1.0}
+                   ^ (line: 1)
+
+As noted, the validator is called every time the ``Attribute`` is assigned, so the attribute can
+never be invalid.
+
+>>> pp = PositivePoint()
+>>> pp.x = 101.1
+>>> pp.y = -101.1  # doctest: +IGNORE_EXCEPTION_DETAIL
+Traceback (most recent call last):
+    ...
+ValueError: Cannot set `PositivePoint.y` to invalid value `-101.1`
+
+When I say it can never be invalid, the value will not be assigned...
+
+>>> pp.y  # doctest: +IGNORE_EXCEPTION_DETAIL
+Traceback (most recent call last):
+    ...
+YamlizingError: Attribute `y` was not defined on `<__main__.PositivePoint object at 0x10da75a08>`
+
+As noted this is rather cumbersome, so you may wish to use `Yamlizable.from_yaml for data
+validation`_ instead.
 
 
 .. _Maps:
@@ -591,7 +644,7 @@ This method can be used effectively in place of a custom resolver.
 
 Data validation with ``Yamlizable.from_yaml``
 +++++++++++++++++++++++++++++++++++++++++++++
-Alternative to using `properties for data validation`_, you can override the Yamlizable.from_yaml_
+Alternative to using `attribute validators`_, you can override the Yamlizable.from_yaml_
 classmethod to supply custom data validation.
 
 >>> from yamlize import yaml_object, Object, Attribute, YamlizingError
@@ -610,7 +663,7 @@ classmethod to supply custom data validation.
 ...
 ...         return self
 >>>
->>> PositivePoint2.load(u'{ x: -0.0000001, y: 1.0}') # doctest: +IGNORE_EXCEPTION_DETAIL
+>>> PositivePoint2.load(u'{ x: -0.0000001, y: 1.0}')  # doctest: +IGNORE_EXCEPTION_DETAIL
 Traceback (most recent call last):
     ...
 YamlizingError: Point x and y values must be positive
@@ -679,44 +732,6 @@ You can also use ``Yamlizable.from_yaml`` for handling subclassing.
 - {shape: Rectangle, length: 3.0, width: 4.0}
 <BLANKLINE>
 
-
-.. _properties for data validation:
-
-Data validation with properties
--------------------------------
-Some basic validation is available through the use of properties. The positive of this is that you
-will get very accurate line numbers for the failing node. The detractor is that you need to
-implement a ``__new__`` which isn't very standard, but is required because Yamlizable.load_ does
-not call ``__init__``.
-
->>> from yamlize import Object, AttributeCollection
->>>
->>> class PositivePoint(Object):
-... 
-...     x = Attribute(type=float)
-... 
-...     # raise a custom exception
-...     @x.validator
-...     def x(self, x):
-...         if x < 0.0:
-...             raise ValueError('Cannot set PositivePoint.x to {}'.format(x))
-...
-...     # or, return False when the value is not valid
-...     y = Attribute(type=float, validator=lambda self, y: y >= 0)
->>>
->>> PositivePoint.load(u'{ x: -0.0000001, y: 1.0}') # doctest: +IGNORE_EXCEPTION_DETAIL
-Traceback (most recent call last):
-    ...
-YamlizingError: Failed to assign attribute `x` to `-1e-07`, got: Cannot set PositivePoint.x to -1e-07
-start:   in "<unicode string>", line 1, column 6:
-    { x: -0.0000001, y: 1.0}
-         ^ (line: 1)
-end:   in "<unicode string>", line 1, column 16:
-    { x: -0.0000001, y: 1.0}
-                   ^ (line: 1)
-
-As noted this is rather cumbersome, so you may wish to use `Yamlizable.from_yaml for data
-validation`_ instead.
 
 Why not just serialze with PyYAML?
 ==================================

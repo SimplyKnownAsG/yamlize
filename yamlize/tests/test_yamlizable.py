@@ -12,15 +12,17 @@ from yamlize import yaml_list
 from yamlize.objects import Object
 
 
-@yamlizable(Attribute(name='name'),
-            Attribute(name='age'))
-class Animal(object):
+
+class Animal(Object):
+
+    name = Attribute()
+
+    age = Attribute()
 
     def __init__(self, name, age):
         self.name = name
         self.age = age
 
-assert Animal.name != None
 
 @yamlizable(Attribute(name='one', type=int),
             Attribute(name='array', type=list))

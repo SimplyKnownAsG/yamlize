@@ -207,9 +207,9 @@ class Attribute(_Attribute):
 
     def __set__(self, obj, value):
         if self.fvalidator is not None:
-            if self.fvalidator(obj, value) is False:
-                raise ValuerError('Cannot set `{}.{}` to invalid value `{}`'
-                                  .format(obj.__class__.__name__, self.name, value))
+            if self.fvalidator(value) is False:
+                raise ValueError('Cannot set `{}.{}` to invalid value `{}`'
+                                 .format(obj.__class__.__name__, self.name, value))
         setattr(obj, self.storage_name, value)
 
     def __delete__(self, obj):
