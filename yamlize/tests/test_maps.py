@@ -5,7 +5,7 @@ import copy
 
 import six
 
-from yamlize import yamlizable
+from yamlize import Object
 from yamlize import YamlizingError
 from yamlize import Attribute
 from yamlize import yaml_map
@@ -13,11 +13,12 @@ from yamlize import Dynamic
 from yamlize import yaml_keyed_list
 
 
-@yamlizable(Attribute(name='name', type=str),
-            Attribute(name='age', type=int))
-class Animal(object):
+class Animal(Object):
+    name = Attribute(type=str)
+    age = Attribute(type=int)
 
     def __init__(self, name, age):
+        Object.__init__(self)
         self.name = name
         self.age = age
 
@@ -166,10 +167,9 @@ T: {name: T, pets: {Maggie: {age: 2}}}
 """.strip()
 
     def test_owner1(self):
-        @yamlizable(Attribute(name='name', type=str),
-                    Attribute(name='pets', type=NamedKennel))
-        class Owner(object):
-            pass
+        class Owner(Object):
+            name = Attribute(type=str)
+            pets = Attribute(type=NamedKennel)
 
         @yaml_map(key_type=str,
                   value_type=Owner)
@@ -196,10 +196,10 @@ T: {pets: {Maggie: {age: 2}}}
 """.strip()
 
     def test_owner2(self):
-        @yamlizable(Attribute(name='name', type=str),
-                    Attribute(name='pets', type=NamedKennel))
-        class Owner(object):
-            pass
+
+        class Owner(Object):
+            name = Attribute(type=str)
+            pets = Attribute(type=NamedKennel)
 
         @yaml_keyed_list(key_name='name',
                          item_type=Owner)

@@ -78,18 +78,18 @@ def yaml_list(item_type):
     return wrapper
 
 
-@yaml_list(str)
-class StrList(object):
-    pass
+class StrList(Sequence):
+
+    item_type = Dynamic
 
 
-@yaml_list(float)
 class FloatList(object):
-    pass
+
+    item_type = float
 
 
-@yaml_list(int)
 class IntList(object):
-    pass
+
+    item_type = int
 
 

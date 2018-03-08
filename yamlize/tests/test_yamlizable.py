@@ -5,7 +5,7 @@ import copy
 import sys
 import six
 
-from yamlize import yamlizable
+from yamlize import Object
 from yamlize import YamlizingError
 from yamlize import Attribute
 from yamlize import yaml_list
@@ -24,18 +24,19 @@ class Animal(Object):
         self.age = age
 
 
-@yamlizable(Attribute(name='one', type=int),
-            Attribute(name='array', type=list))
-class TypeCheck(object):
+class TypeCheck(Object):
+    one = Attribute(type=int)
+    array = Attribute(type=list)
 
     def __init__(self, one, array):
+        Object.__init__(self)
         self.one = one
         self.array = array
 
 
-@yamlizable(Attribute(name='name', type=str))
-class AnimalWithFriend(object):
-    pass
+class AnimalWithFriend(Object):
+    name = Attribute(type=str)
+
 AnimalWithFriend.friend = Attribute(name='friend',
                                     type=AnimalWithFriend,
                                     default=None)

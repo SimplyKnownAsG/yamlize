@@ -5,7 +5,7 @@ import copy
 import sys
 import six
 
-from yamlize import Attribute, StrList, Sequence, yamlizable, yaml_list
+from yamlize import Attribute, StrList, Sequence, Object
 
 
 class Test_Sequence_list_methods(unittest.TestCase):
@@ -43,13 +43,16 @@ class Test_Sequence_list_methods(unittest.TestCase):
         self.assertFalse(s_seq != s_list)  # use assertFalse and == to force __eq__ usage
         self.assertFalse(s_list != s_seq)
 
-@yamlizable(Attribute(name='name', type=str))
-class AnimalWithFriends(object):
-    pass
 
-@yaml_list(item_type=AnimalWithFriends)
-class AnimalSequence(object):
-    pass
+class AnimalWithFriends(Object):
+
+    name = Attribute(type=str)
+
+
+class AnimalSequence(Sequence):
+
+    item_type = AnimalWithFriends
+
 
 AnimalWithFriends.friends = Attribute(name='friends',
                                       type=AnimalSequence,

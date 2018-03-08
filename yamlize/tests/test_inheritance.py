@@ -1,27 +1,28 @@
 import unittest
 import re
 
-from yamlize import yamlizable
 from yamlize import Attribute
 from yamlize import Dynamic
 from yamlize import Object
 from yamlize import yaml_keyed_list
-from yamlize import yaml_list
+from yamlize import Sequence
 from yamlize import yaml_map
 from yamlize import YamlizingError
 
 
-@yamlizable(Attribute(name='name', type=str),
-            Attribute(name='age', type=int))
-class Animal(object):
+class Animal(Object):
+    name = Attribute(type=str)
+    age = Attribute(type=int)
+
     def __init__(self, name, age):
+        Object.__init__(self)
         self.name = name
         self.age = age
 
 
-@yaml_list(item_type=Animal)
-class AnimalList(object):
-    pass
+class AnimalList(Sequence):
+
+    item_type=Animal
 
 
 @yaml_keyed_list(key_name='name',
@@ -30,12 +31,11 @@ class NamedKennel(object):
     pass
 
 
-@yamlizable(Attribute(name='name', type=str),
-            Attribute(name='int_attr', type=int),
-            Attribute(name='str_attr', type=str),
-            Attribute(name='float_attr', type=float))
-class Thing(object):
-    pass
+class Thing(Object):
+    name = Attribute(type=str)
+    int_attr = Attribute(type=int)
+    str_attr = Attribute(type=str)
+    float_attr = Attribute(type=float)
 
 
 @yaml_keyed_list(key_name='name', item_type=Thing)
@@ -87,10 +87,9 @@ things:
 '''.strip()
 
     def test_bad_type_in_merge(self):
-        @yamlizable(Attribute('data'),
-                    Attribute('things', type=Things))
-        class BadData(object):
-            pass
+        class BadData(Object):
+            data = Attribute()
+            things = Attribute(type=Things)
 
         with self.assertRaisesRegexp(YamlizingError, 'this will fail'):
             BadData.load(TestMergeAndAnchor.bad_data_merge)
@@ -166,9 +165,8 @@ thing3:
 '''.strip()
 
     def test_object_subclass(self):
-        @yamlizable(Attribute(name='color', type=str, default='yellow'))
         class ColorThing(Thing):
-            pass
+            color = Attribute(type=str, default='yellow')
 
         self.assertIn('int_attr', ColorThing.attributes.by_name)
 
@@ -182,8 +180,9 @@ thing3:
         self.assertEqual(TestSubclassing.multiple_merge, actual)
 
     def test_object_subclassing2(self):
-        @yamlizable(Attribute('shape', type=str))
-        class Shape(object):
+        class Shape(Object):
+
+            shape = Attribute(type=str)
 
             @classmethod
             def from_yaml(cls, loader, node, round_trip_data):
@@ -205,22 +204,22 @@ thing3:
                 # from_yaml.__func__ is the unbound class method
                 return Object.from_yaml.__func__(subclass, loader, node, round_trip_data)
 
-        @yamlizable(Attribute('radius', type=float))
         class Circle(Shape):
-            pass
 
-        @yamlizable(Attribute('side', type=float))
+            radius = Attribute(type=float)
+
         class Square(Shape):
-            pass
 
-        @yamlizable(Attribute('length', type=float),
-                     Attribute('width', type=float))
+            side = Attribute(type=float)
+
         class Rectangle(Shape):
-            pass
 
-        @yaml_list(Shape)
-        class Shapes(object):
-            pass
+            length = Attribute(type=float)
+            width = Attribute(type=float)
+
+        class Shapes(Sequence):
+
+            item_type = Shape
 
         input_str = '\n'.join(l.strip() for l in '''
         - {shape: Circle, radius: 1.0}
@@ -232,11 +231,11 @@ thing3:
 
         self.assertEqual(Shapes.dump(shapes), input_str)
 
-@yamlizable(Attribute('name', type=str),
-            Attribute('req1', type=int),
-            Attribute('opt1', type=str, default=None))
-class ReqOptPair(object):
-    pass
+
+class ReqOptPair(Object):
+    name = Attribute(type=str)
+    req1 = Attribute(type=int)
+    opt1 = Attribute(type=str, default=None)
 
 
 @yaml_keyed_list(key_name='name', item_type=ReqOptPair)

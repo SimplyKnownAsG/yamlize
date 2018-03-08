@@ -316,14 +316,14 @@ Data validation with Attribute validators
 +++++++++++++++++++++++++++++++++++++++++
 Attribute data validation is available through validators. Your validator method will be called
 whenever assigning a value to the attribute. You should get very accurate line numbers for the
-failing YAML node. 
+failing YAML node.
 
 >>> from yamlize import Object, AttributeCollection
 >>>
 >>> class PositivePoint(Object):
-... 
+...
 ...     x = Attribute(type=float)
-... 
+...
 ...     # raise a custom exception
 ...     @x.validator
 ...     def x(x):
@@ -463,16 +463,14 @@ A ``yamlize.Sequence`` should be used effectively as a Python strong-typed list.
 ``yamlize`` decorators / classes, a ``Sequence`` cannot have attributes. The lack of attributes is a
 functionality of YAML itself; a YAML sequence cannot have attributes.
 
->>> from yamlize import yaml_object, yaml_list
+>>> from yamlize import Object, Sequence
 >>>
->>> @yaml_object(Attribute(name='first', type=str),
-...              Attribute(name='last', type=str))
-... class Person(object):
-...     pass
+>>> class Person(Object):
+...     first = Attribute(type=str)
+...     last = Attribute(type=str)
 >>>
->>> @yaml_list(Person)
-... class People(object):
-...     pass
+>>> class People(Sequence):
+...     item_type = Person
 >>>
 >>> peeps = People.load(u'''
 ... - {first: g, last: m}
@@ -488,16 +486,14 @@ Alias and Anchor Treatment
 ==========================
 A ``yamlize`` correctly handles YAML anchors (&), aliases (*), and merge tags (<<).
 
->>> from yamlize import yaml_object, yaml_list
+>>> from yamlize import Object, Sequence
 >>>
->>> @yaml_object(Attribute(name='first', type=str),
-...              Attribute(name='last', type=str))
-... class Person(object):
-...     pass
+>>> class Person(Object):
+...     first = Attribute(type=str)
+...     last = Attribute(type=str)
 >>>
->>> @yaml_list(Person)
-... class People(object):
-...     pass
+>>> class People(Sequence):
+...     item_type = Person
 >>>
 >>> peeps = People.load(u'''
 ... - &g {first: g, last: m}
@@ -537,13 +533,13 @@ Merge tags
 One neat aspect of YAML is the ability to use merge tags ``<<:`` to reduce user input. ``yamlize``
 will retain these.
 
->>> from yamlize import yamlizable, yaml_keyed_list
->>> @yamlizable(Attribute(name='name', type=str),
-...             Attribute(name='int_attr', type=int),
-...             Attribute(name='str_attr', type=str),
-...             Attribute(name='float_attr', type=float))
-... class Thing(object):
-...     pass
+>>> from yamlize import Object, yaml_keyed_list
+>>>
+>>> class Thing(Object):
+...     name = Attribute(type=str)
+...     int_attr = Attribute(type=int)
+...     str_attr = Attribute(type=str)
+...     float_attr = Attribute(type=float)
 >>>
 >>> @yaml_keyed_list(key_name='name', item_type=Thing)
 ... class Things(object):
@@ -647,11 +643,11 @@ Data validation with ``Yamlizable.from_yaml``
 Alternative to using `attribute validators`_, you can override the Yamlizable.from_yaml_
 classmethod to supply custom data validation.
 
->>> from yamlize import yaml_object, Object, Attribute, YamlizingError
+>>> from yamlize import Object, Attribute, YamlizingError
 >>>
->>> @yaml_object(Attribute('x', type=float),
-...              Attribute('y', type=float))
-... class PositivePoint2(object):
+>>> class PositivePoint2(Object):
+...     x = Attribute(type=float)
+...     y = Attribute(type=float)
 ...
 ...     @classmethod
 ...     def from_yaml(cls, loader, node, round_trip_data=None):
@@ -678,10 +674,11 @@ Subclassing
 +++++++++++
 You can also use ``Yamlizable.from_yaml`` for handling subclassing.
 
->>> from yamlize import yamlizable, yaml_list
+>>> from yamlize import Object, Sequence
 >>>
->>> @yamlizable(Attribute('shape', type=str))
-... class Shape(object):
+>>> class Shape(Object):
+...
+...     shape = Attribute(type=str)
 ...
 ...     @classmethod
 ...     def from_yaml(cls, loader, node, round_trip_data):
@@ -700,32 +697,32 @@ You can also use ``Yamlizable.from_yaml`` for handling subclassing.
 ...             'Rectangle' : Rectangle
 ...             }[subclass_name]
 ...
-...         # from_yaml.__func__ is the unbound classmethod
+...         # from_yaml.__func__ is the unbound class method
 ...         return Object.from_yaml.__func__(subclass, loader, node, round_trip_data)
-
->>> @yamlizable(Attribute('radius', type=float))
-... class Circle(Shape):
-...     pass
+>>>
+>>> class Circle(Shape):
 ...
->>> @yamlizable(Attribute('side', type=float))
-... class Square(Shape):
-...     pass
+...     radius = Attribute(type=float)
+>>>
+>>> class Square(Shape):
 ...
->>> @yamlizable(Attribute('length', type=float),
-...              Attribute('width', type=float))
-... class Rectangle(Shape):
-...     pass
+...     side = Attribute(type=float)
+>>>
+>>> class Rectangle(Shape):
 ...
->>> @yaml_list(Shape)
-... class Shapes(object):
-...     pass
+...     length = Attribute(type=float)
+...     width = Attribute(type=float)
+>>>
+>>> class Shapes(Sequence):
 ...
+...     item_type = Shape
+>>>
 >>> shapes = Shapes.load(u'''
 ... - {shape: Circle, radius: 1.0}
 ... - {shape: Square, side: 2.0}
 ... - {shape: Rectangle, length: 3.0, width: 4.0}
 ... ''')
-...
+>>>
 >>> print(Shapes.dump(shapes))
 - {shape: Circle, radius: 1.0}
 - {shape: Square, side: 2.0}

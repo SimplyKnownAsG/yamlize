@@ -8,6 +8,7 @@ from .yamlizing_error import YamlizingError
 
 
 class Sequence(Yamlizable):
+
     item_type = Dynamic
 
     __slots__ = ('__items', '__round_trip_data')
