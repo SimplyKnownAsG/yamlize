@@ -8,9 +8,11 @@ import six
 from yamlize import Object
 from yamlize import YamlizingError
 from yamlize import Attribute
-from yamlize import yaml_map
+from yamlize import Map
+from yamlize import Typed
 from yamlize import Dynamic
 from yamlize import yaml_keyed_list
+from yamlize.attribute_collection import MapAttributeCollection
 
 
 class Animal(Object):
@@ -23,10 +25,11 @@ class Animal(Object):
         self.age = age
 
 
-@yaml_map(key_type=str,
-          value_type=Animal)
-class Kennel(object):
-    pass
+class Kennel(Map):
+
+    key_type = Typed(str)
+
+    value_type = Animal
 
 
 kennel_yaml = """
@@ -132,10 +135,9 @@ paws for fun:
 """.strip()
 
     def test_nested(self):
-        @yaml_map(key_type=str,
-                  value_type=NamedKennel)
-        class Kennels(object):
-            pass
+        class Kennels(Map):
+            key_type = Typed(str)
+            value_type = NamedKennel
 
         kennels = Kennels.load(Test_two_way.nested_named_kennel)
         bap = kennels['bark and play']
@@ -171,10 +173,9 @@ T: {name: T, pets: {Maggie: {age: 2}}}
             name = Attribute(type=str)
             pets = Attribute(type=NamedKennel)
 
-        @yaml_map(key_type=str,
-                  value_type=Owner)
-        class PetMap(object):
-            pass
+        class PetMap(Map):
+            key_type = Typed(str)
+            value_type = Owner
 
         peeps = PetMap.load(Test_two_way.pet_map1)
 
@@ -218,11 +219,10 @@ cheese: Gorgonzola
 '''.strip()
 
     def test_map_with_attribute(self):
-        @yaml_map(str,
-                  Dynamic,
-                  Attribute(name='name', type=str))
-        class NamedMap(object):
-            pass
+        class NamedMap(Map):
+            key_type = Typed(str)
+            value_type = Dynamic
+            name = Attribute(type=str)
 
         blt = NamedMap.load(self.__class__.map_with_attribute)
         self.assertNotIn('name', blt)
@@ -248,11 +248,10 @@ grilled cheese:
 '''.strip()
 
     def test_keyed_list_and_map_with_attribute(self):
-        @yaml_map(str,
-                  Dynamic,
-                  Attribute(name='name', type=str))
-        class MenuItem(object):
-            pass
+        class MenuItem(Map):
+            key_type = Typed(str)
+            value_type = Dynamic
+            name = Attribute(type=str)
 
         @yaml_keyed_list(key_name='name', item_type=MenuItem)
         class Menu(object):
@@ -283,11 +282,12 @@ grilled cheese:
 '''.strip()
 
     def test_daily_menu(self):
-        @yaml_map(str,
-                  Dynamic,
-                  Attribute(name='name', type=str))
-        class MenuItem(object):
-            pass
+        class MenuItem(Map):
+            key_type = Typed(str)
+            value_type = Dynamic
+            name = Attribute(type=str)
+
+        self.assertIsInstance(MenuItem.attributes, MapAttributeCollection)
 
         @yaml_keyed_list('name', MenuItem,
                          Attribute('day', type=str))
@@ -317,11 +317,10 @@ Tuesday:
 '''.strip()
 
     def test_daily_menus(self):
-        @yaml_map(str,
-                  Dynamic,
-                  Attribute(name='name', type=str))
-        class MenuItem(object):
-            pass
+        class MenuItem(Map):
+            key_type = Typed(str)
+            value_type = Dynamic
+            name = Attribute(type=str)
 
         @yaml_keyed_list('name', MenuItem,
                          Attribute('day', type=str))

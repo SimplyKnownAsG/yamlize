@@ -373,14 +373,13 @@ Maps
 that has both attributes and keys/values. Attribute names are exclusive, and cannot also be
 provided as a key name.
 
->>> from yamlize import yaml_map, Attribute
+>>> from yamlize import Map, Typed, Attribute
 >>>
->>> @yaml_map(str,    # key_type
-...           float,  # value_type
-...           Attribute(name='first'),
-...           Attribute(name='last'))
-... class Student(object):
-...     pass # ... or did they?
+>>> class Student(Map):
+...     key_type = Typed(str)
+...     value_type = Typed(float)
+...     first = Attribute()
+...     last = Attribute()
 >>>
 >>> f = Student.load(u'''
 ... first: Failing
@@ -400,12 +399,11 @@ provided as a key name.
 
 You can use ``yamlize`` types as arguments to other classes.
 
->>> from yamlize import yaml_map
+>>> from yamlize import Map, Typed
 ...
->>> @yaml_map(str,      # key type
-...           Student)  # value type
-... class GradeBook(object):
-...     pass
+>>> class GradeBook(Map):
+...     key_type = Typed(str)
+...     value_type = Student  # no need to use Typed, as Student is already Yamlizable
 >>>
 >>> gb = GradeBook()
 >>> gb['Failing Student'] = f

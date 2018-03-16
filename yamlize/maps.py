@@ -1,13 +1,46 @@
+import six
 import ruamel.yaml
 
 from collections import OrderedDict
 
-from .objects import Object
+from .objects import Object, ObjectType
 from .yamlizable import Dynamic
 from .yamlizing_error import YamlizingError
 
 
-class __MapBase(Object):
+def _all_bases(bases):
+    """returns a set of subclasses from bases tuple that would be passed in type.__init__"""
+    subclasses = set()
+
+    for base in bases:
+        subclasses.add(base)
+        subclasses.update(_all_bases(base.__subclasses__()))
+
+    return subclasses
+
+
+class MapType(ObjectType):
+
+    def __init__(cls, name, bases, data):
+        from yamlize.attribute_collection import (MapAttributeCollection,
+                                                  KeyedListAttributeCollection)
+        attributes = data.get('attributes', None)
+
+        # the KeyedList in gloabls() hack short circuuits the below logic until Map and KeyedList
+        # have been defined
+        if attributes is None and 'KeyedList' in globals():
+            all_bases = _all_bases(bases)
+            if any(base is Map for base in all_bases):
+                data['attributes'] = MapAttributeCollection()
+            elif any(base is KeyedList for base in all_bases):
+                data['attributes'] = KeyedListAttributeCollection()
+            else:
+                raise TypeError('Expected `{}` to be a yamlize.maps.Map subclass'
+                                .format(name))
+        return ObjectType.__init__(cls, name, bases, data)
+
+
+class __MapBase(six.with_metaclass(MapType, Object)):
     """
     __MapBase is a wrapper around and OrderedDict.
 

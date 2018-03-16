@@ -97,13 +97,7 @@ class AttributeCollection(object):
 
 class MapAttributeCollection(AttributeCollection):
 
-    __slots__ = ('key_type', 'value_type')
-
-    def __init__(self, key_type, value_type, *args, **kwargs):
-        AttributeCollection.__init__(self, *args, **kwargs)
-
-        self.key_type = key_type
-        self.value_type = value_type
+    __slots__ = ()
 
     def from_yaml(self, obj, loader, key_node, val_node, round_trip_data):
         """
@@ -119,8 +113,8 @@ class MapAttributeCollection(AttributeCollection):
         else:
             # the key_node will point to our object
             del loader.constructed_objects[key_node]
-            key = self.key_type.from_yaml(loader, key_node, round_trip_data)
-            val = self.value_type.from_yaml(loader, val_node, round_trip_data)
+            key = obj.key_type.from_yaml(loader, key_node, round_trip_data)
+            val = obj.value_type.from_yaml(loader, val_node, round_trip_data)
             try:
                 obj.__setitem__(key, val)
             except Exception as ee:
@@ -134,13 +128,10 @@ class MapAttributeCollection(AttributeCollection):
         """
         returns: Attribute that was applied
         """
-        attr_order = AttributeCollection.yaml_attribute_order(self, obj,
-                                                              attr_order)
+        attr_order = AttributeCollection.yaml_attribute_order(self, obj, attr_order)
 
         for item_key in obj.keys():
-            attr_order.append(
-                MapItem(item_key, self.key_type, self.value_type)
-            )
+            attr_order.append(MapItem(item_key, obj.key_type, obj.value_type))
 
         return attr_order
 
@@ -153,7 +144,7 @@ class MapAttributeCollection(AttributeCollection):
 
         for item_key in obj.keys():
             attr_order.append(
-                MapItem(item_key, self.key_type, self.value_type)
+                MapItem(item_key, obj.key_type, obj.value_type)
             )
 
         return attr_order
@@ -198,13 +189,10 @@ class KeyedListAttributeCollection(AttributeCollection):
         """
         returns: Attribute that was applied
         """
-        attr_order = AttributeCollection.yaml_attribute_order(self, obj,
-                                                              attr_order)
+        attr_order = AttributeCollection.yaml_attribute_order(self, obj, attr_order)
 
         for item_key in obj.keys():
-            attr_order.append(
-                KeyedListItem(self.key_name, self.item_type, item_key)
-            )
+            attr_order.append(KeyedListItem(self.key_name, self.item_type, item_key))
 
         return attr_order
 
@@ -212,13 +200,10 @@ class KeyedListAttributeCollection(AttributeCollection):
         """
         returns: Attribute that was applied
         """
-        attr_order = AttributeCollection.attr_dump_order(self, obj,
-                                                         attr_order)
+        attr_order = AttributeCollection.attr_dump_order(self, obj, attr_order)
 
         for item_key in obj.keys():
-            attr_order.append(
-                KeyedListItem(self.key_name, self.item_type, item_key)
-            )
+            attr_order.append(KeyedListItem(self.key_name, self.item_type, item_key))
 
         return attr_order
 

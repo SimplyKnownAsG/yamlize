@@ -6,7 +6,7 @@ from .attribute_collection import (AttributeCollection, MapAttributeCollection,
 from .maps import Map, KeyedList
 from .objects import Object
 from .sequences import Sequence
-from .yamlizable import Dynamic, Yamlizable
+from .yamlizable import Dynamic, Yamlizable, Typed
 from .yamlizing_error import YamlizingError
 
 
@@ -35,14 +35,14 @@ A more logical, less fun, alias for `yamlizable`.
 
 
 def yaml_map(key_type, value_type, *attributes):
-    yaml_attributes = MapAttributeCollection(
-        Yamlizable.get_yamlizable_type(key_type),
-        Yamlizable.get_yamlizable_type(value_type),
-        *attributes
-    )
+    yaml_attributes = MapAttributeCollection(*attributes)
 
     def wrapper(klass):  # pylint: disable=missing-docstring
-        wrapped = klass.__class__(klass.__name__, (klass, Map), {'attributes': yaml_attributes})
+        wrapped = klass.__class__(klass.__name__, (klass, Map),
+                                  {'attributes': yaml_attributes,
+                                   'key_type': Yamlizable.get_yamlizable_type(key_type),
+                                   'value_type': Yamlizable.get_yamlizable_type(value_type)
+                                   })
         wrapped.__module__ = klass.__module__
         setattr(sys.modules[wrapped.__module__], klass.__name__, wrapped)
         return wrapped
@@ -83,12 +83,12 @@ class StrList(Sequence):
     item_type = Dynamic
 
 
-class FloatList(object):
+class FloatList(Sequence):
 
     item_type = float
 
 
-class IntList(object):
+class IntList(Sequence):
 
     item_type = int
 
