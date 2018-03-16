@@ -432,13 +432,11 @@ another Yamlizable type. The purpose of pointing to an attribute on the value is
 duplication of data. In the previous example of the ``GradeBook`` we specified "Failing Student"
 twice.
 
->>> from yamlize import yaml_keyed_list, Attribute
+>>> from yamlize import KeyedList, Attribute
 >>>
->>> @yaml_keyed_list('first',      # attribute of the value that is the key
-...                  Student,      # value_type
-...                  )
-... class GradeBook(object):
-...     pass
+>>> class GradeBook(KeyedList):
+...     key_attr = Student.first  # attribute of the value that is the key
+...     item_type = Student
 >>>
 >>> grade_book = GradeBook()
 >>> grade_book.add(f)  # f is failing student from above
@@ -531,7 +529,7 @@ Merge tags
 One neat aspect of YAML is the ability to use merge tags ``<<:`` to reduce user input. ``yamlize``
 will retain these.
 
->>> from yamlize import Object, yaml_keyed_list
+>>> from yamlize import Object, KeyedList
 >>>
 >>> class Thing(Object):
 ...     name = Attribute(type=str)
@@ -539,9 +537,9 @@ will retain these.
 ...     str_attr = Attribute(type=str)
 ...     float_attr = Attribute(type=float)
 >>>
->>> @yaml_keyed_list(key_name='name', item_type=Thing)
-... class Things(object):
-...     pass
+>>> class Things(KeyedList):
+...     key_attr = Thing.name
+...     item_type = Thing
 >>>
 >>> things = Things.load(u'''
 ... thing1: &thing1

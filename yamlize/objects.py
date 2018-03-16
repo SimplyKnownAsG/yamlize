@@ -143,7 +143,7 @@ class Object(six.with_metaclass(ObjectType, Yamlizable)):
         return self
 
     @classmethod
-    def from_yaml_key_val(cls, loader, key_node, val_node, key_name, _rtd=None):
+    def from_yaml_key_val(cls, loader, key_node, val_node, key_attribute, _rtd=None):
         complete_inheritance = False
 
         if val_node in loader.constructed_objects:
@@ -167,13 +167,6 @@ class Object(six.with_metaclass(ObjectType, Yamlizable)):
         else:
             self.__round_trip_data._complete_inheritance = True
             self.__add_parent(loader, val_node)
-
-        key_attribute = cls.attributes.by_name.get(key_name, None)
-
-        if key_attribute is None:
-            raise YamlizingError('Error parsing {}, there is no attribute '
-                                 'named `{}`'
-                                 .format(type(self), key_name), key_node)
 
         key_attribute.from_yaml(self, loader, key_node, self.__round_trip_data)
         # loader.constructed_objects[key_node] = self
@@ -272,7 +265,7 @@ class Object(six.with_metaclass(ObjectType, Yamlizable)):
         return node
 
     @classmethod
-    def to_yaml_key_val(cls, dumper, self, key_name, _rtd=None):
+    def to_yaml_key_val(cls, dumper, self, key_attribute, _rtd=None):
         if not isinstance(self, cls):
             raise YamlizingError('Expected instance of {}, got: {}'
                                  .format(cls, self))
@@ -280,7 +273,6 @@ class Object(six.with_metaclass(ObjectType, Yamlizable)):
         if self in dumper.represented_objects:
             return dumper.represented_objects[self]
 
-        key_attribute = cls.attributes.by_name[key_name]
         items = []
         key_attribute.to_yaml(self, dumper, items, self.__round_trip_data)
 

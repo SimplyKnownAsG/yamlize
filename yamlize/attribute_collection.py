@@ -118,9 +118,8 @@ class MapAttributeCollection(AttributeCollection):
             try:
                 obj.__setitem__(key, val)
             except Exception as ee:
-                raise YamlizingError(
-                    'Failed to add key `{}` with value `{}`, got: {}'
-                    .format(key, val, ee), key_node)
+                raise YamlizingError('Failed to add key `{}` with value `{}`, got: {}'
+                                     .format(key, val, ee), key_node)
 
         return attribute  # could be None, and that is fine
 
@@ -139,26 +138,17 @@ class MapAttributeCollection(AttributeCollection):
         """
         returns: Attribute that was applied
         """
-        attr_order = AttributeCollection.attr_dump_order(self, obj,
-                                                         attr_order)
+        attr_order = AttributeCollection.attr_dump_order(self, obj, attr_order)
 
         for item_key in obj.keys():
-            attr_order.append(
-                MapItem(item_key, obj.key_type, obj.value_type)
-            )
+            attr_order.append(MapItem(item_key, obj.key_type, obj.value_type))
 
         return attr_order
 
 
 class KeyedListAttributeCollection(AttributeCollection):
 
-    __slots__ = ('key_name', 'item_type')
-
-    def __init__(self, key_name, item_type, *args, **kwargs):
-        AttributeCollection.__init__(self, *args, **kwargs)
-
-        self.key_name = key_name
-        self.item_type = item_type
+    __slots__ = ()
 
     def from_yaml(self, obj, loader, key_node, val_node, round_trip_data):
         """
@@ -174,14 +164,14 @@ class KeyedListAttributeCollection(AttributeCollection):
         else:
             # the key_node will point to our object
             del loader.constructed_objects[key_node]
-            val = self.item_type.from_yaml_key_val(
+            val = obj.item_type.from_yaml_key_val(
                 loader,
                 key_node,
                 val_node,
-                self.key_name,
+                obj.__class__.key_attr,
                 round_trip_data
             )
-            obj[getattr(val, self.key_name)] = val
+            obj[obj.__class__.key_attr.get_value(val)] = val
 
         return attribute  # could be None, and that is fine
 
@@ -192,7 +182,7 @@ class KeyedListAttributeCollection(AttributeCollection):
         attr_order = AttributeCollection.yaml_attribute_order(self, obj, attr_order)
 
         for item_key in obj.keys():
-            attr_order.append(KeyedListItem(self.key_name, self.item_type, item_key))
+            attr_order.append(KeyedListItem(obj.__class__.key_attr, obj.item_type, item_key))
 
         return attr_order
 
@@ -203,7 +193,7 @@ class KeyedListAttributeCollection(AttributeCollection):
         attr_order = AttributeCollection.attr_dump_order(self, obj, attr_order)
 
         for item_key in obj.keys():
-            attr_order.append(KeyedListItem(self.key_name, self.item_type, item_key))
+            attr_order.append(KeyedListItem(obj.__class__.key_attr, obj.item_type, item_key))
 
         return attr_order
 

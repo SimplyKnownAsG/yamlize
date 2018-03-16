@@ -51,15 +51,14 @@ def yaml_map(key_type, value_type, *attributes):
 
 
 def yaml_keyed_list(key_name, item_type, *attributes):
-    yaml_attributes = KeyedListAttributeCollection(
-        key_name,
-        Yamlizable.get_yamlizable_type(item_type),
-        *attributes
-    )
+    yaml_attributes = KeyedListAttributeCollection(*attributes)
 
     def wrapper(klass):  # pylint: disable=missing-docstring
         wrapped = klass.__class__(klass.__name__, (klass, KeyedList),
-                                  {'attributes': yaml_attributes})
+                                  {'attributes': yaml_attributes,
+                                   'key_attr': getattr(item_type, key_name),  # convert from string
+                                                                              # to Attribute
+                                   'item_type': Yamlizable.get_yamlizable_type(item_type)})
         wrapped.__module__ = klass.__module__
         setattr(sys.modules[wrapped.__module__], klass.__name__, wrapped)
         return wrapped

@@ -4,7 +4,7 @@ import re
 from yamlize import Attribute
 from yamlize import Dynamic
 from yamlize import Object
-from yamlize import yaml_keyed_list
+from yamlize import KeyedList
 from yamlize import Sequence
 from yamlize import yaml_map
 from yamlize import YamlizingError
@@ -25,10 +25,9 @@ class AnimalList(Sequence):
     item_type=Animal
 
 
-@yaml_keyed_list(key_name='name',
-                 item_type=Animal)
-class NamedKennel(object):
-    pass
+class NamedKennel(KeyedList):
+    key_attr = Animal.name
+    item_type = Animal
 
 
 class Thing(Object):
@@ -38,9 +37,9 @@ class Thing(Object):
     float_attr = Attribute(type=float)
 
 
-@yaml_keyed_list(key_name='name', item_type=Thing)
-class Things(object):
-    pass
+class Things(KeyedList):
+    key_attr = Thing.name
+    item_type = Thing
 
 
 class TestMergeAndAnchor(unittest.TestCase):
@@ -170,9 +169,9 @@ thing3:
 
         self.assertIn('int_attr', ColorThing.attributes.by_name)
 
-        @yaml_keyed_list(key_name='name', item_type=ColorThing)
-        class CThings(object):
-            pass
+        class CThings(KeyedList):
+            key_attr = ColorThing.name
+            item_type = ColorThing
 
         things = CThings.load(TestSubclassing.multiple_merge)
         actual = CThings.dump(things).strip()
@@ -238,9 +237,9 @@ class ReqOptPair(Object):
     opt1 = Attribute(type=str, default=None)
 
 
-@yaml_keyed_list(key_name='name', item_type=ReqOptPair)
-class ReqOpts(object):
-    pass
+class ReqOpts(KeyedList):
+    key_attr = ReqOptPair.name
+    item_type = ReqOptPair
 
 
 class TestOptionalAttributes(unittest.TestCase):

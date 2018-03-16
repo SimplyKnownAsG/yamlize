@@ -1,6 +1,6 @@
 import unittest
 
-from yamlize import Object, YamlizingError, Attribute, yaml_object
+from yamlize import Object, YamlizingError, Attribute
 
 
 class PositivePoint(Object):
@@ -35,9 +35,9 @@ class TestDataValidation(unittest.TestCase):
 
     def test_from_yaml(self):
 
-        @yaml_object(Attribute('x', type=float),
-                     Attribute('y', type=float))
-        class PositivePoint2(object):
+        class PositivePoint2(Object):
+            x = Attribute(type=float)
+            y = Attribute(type=float)
 
             @classmethod
             def from_yaml(cls, loader, node, round_trip_data=None):

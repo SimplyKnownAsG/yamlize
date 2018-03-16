@@ -11,7 +11,7 @@ from yamlize import Attribute
 from yamlize import Map
 from yamlize import Typed
 from yamlize import Dynamic
-from yamlize import yaml_keyed_list
+from yamlize import KeyedList
 from yamlize.attribute_collection import MapAttributeCollection
 
 
@@ -42,10 +42,9 @@ Possum:
 """
 
 
-@yaml_keyed_list(key_name='name',
-                 item_type=Animal)
-class NamedKennel(object):
-    pass
+class NamedKennel(KeyedList):
+    key_attr = Animal.name
+    item_type = Animal
 
 
 named_kennel_yaml = """
@@ -61,6 +60,7 @@ class Test_NamedKennel(unittest.TestCase):
     def test_keyed_list_fails_with_incorrect_assignment(self):
         poss = Animal('Possum', 5)
         kennel = NamedKennel()
+        self.assertEqual('Possum', Animal.name.__get__(poss))
         with self.assertRaisesRegexp(KeyError, 'expected.*`Possum`'):
             kennel[5] = poss
 
@@ -202,10 +202,9 @@ T: {pets: {Maggie: {age: 2}}}
             name = Attribute(type=str)
             pets = Attribute(type=NamedKennel)
 
-        @yaml_keyed_list(key_name='name',
-                         item_type=Owner)
-        class PetMap(object):
-            pass
+        class PetMap(KeyedList):
+            key_attr = Owner.name
+            item_type = Owner
 
         peeps = PetMap.load(Test_two_way.pet_map2)
 
@@ -253,9 +252,9 @@ grilled cheese:
             value_type = Dynamic
             name = Attribute(type=str)
 
-        @yaml_keyed_list(key_name='name', item_type=MenuItem)
-        class Menu(object):
-            pass
+        class Menu(KeyedList):
+            key_attr = MenuItem.name
+            item_type = MenuItem
 
         menu = Menu.load(self.__class__.menu)
         blt = menu['blt']
@@ -289,10 +288,10 @@ grilled cheese:
 
         self.assertIsInstance(MenuItem.attributes, MapAttributeCollection)
 
-        @yaml_keyed_list('name', MenuItem,
-                         Attribute('day', type=str))
-        class DailyMenu(object):
-            pass
+        class DailyMenu(KeyedList):
+            key_attr = MenuItem.name
+            item_type = MenuItem
+            day = Attribute(type=str)
 
         menu = DailyMenu.load(self.__class__.daily_menu)
         self.assertEqual('Monday', menu.day)
@@ -322,14 +321,14 @@ Tuesday:
             value_type = Dynamic
             name = Attribute(type=str)
 
-        @yaml_keyed_list('name', MenuItem,
-                         Attribute('day', type=str))
-        class DailyMenu(object):
-            pass
+        class DailyMenu(KeyedList):
+            key_attr = MenuItem.name
+            item_type = MenuItem
+            day = Attribute(type=str)
 
-        @yaml_keyed_list(key_name='day', item_type=DailyMenu)
-        class Menus(object):
-            pass
+        class Menus(KeyedList):
+            key_attr = DailyMenu.day
+            item_type = DailyMenu
 
         menus = Menus.load(self.__class__.daily_menus)
         self.assertEqual('Monday', menus['Monday'].day)

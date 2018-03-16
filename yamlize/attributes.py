@@ -275,10 +275,11 @@ class KeyedListItem(_Attribute):
     This should only be used temporarily.
     """
 
-    __slots__ = ('key_name', 'item_type', 'item_key')
+    __slots__ = ('key_attr', 'item_type', 'item_key')
 
-    def __init__(self, key_name, item_type, item_key):
-        self.key_name = key_name
+    def __init__(self, key_attr, item_type, item_key):
+        # HACK: key_attr is a descriptor, make it a tuple to trick python
+        self.key_attr = (key_attr,)
         self.item_type = item_type
         self.item_key = item_key
 
@@ -292,8 +293,9 @@ class KeyedListItem(_Attribute):
 
     def to_yaml(self, obj, dumper, node_items, round_trip_data):
         value = self.get_value(obj)
+        # HACK: key_attr is a tuple of the Attribute descriptor
         key_node, val_node = self.item_type.to_yaml_key_val(
-            dumper, value, self.key_name, round_trip_data)
+            dumper, value, self.key_attr[0], round_trip_data)
         node_items.append((key_node, val_node))
 
     def get_value(self, obj):

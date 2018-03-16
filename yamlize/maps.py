@@ -92,13 +92,13 @@ class __MapBase(six.with_metaclass(MapType, Object)):
         """
         String representation of the collection - behaves like an OrderedDict.
         """
-        return repr(self.__data)
+        return repr(self.__data).replace('OrderedDict', type(self).__name__)
 
     def __str__(self):
         """
         String representation of the collection - behaves like an OrderedDict.
         """
-        return str(self.__data)
+        return str(self.__data).replace('OrderedDict', type(self).__name__)
 
     def __len__(self):
         """Returns the number of items in the collection."""
@@ -148,21 +148,29 @@ class Map(__MapBase):
 
     __slots__ = ()
 
+    key_type = Dynamic
+
+    value_type = Dynamic
+
 
 class KeyedList(__MapBase):
 
     __slots__ = ()
 
+    key_attr = None
+
+    key_type = Dynamic
+
     def __setitem__(self, key, value):
-        if getattr(value, self.attributes.key_name) != key:
+        if self.__class__.key_attr.get_value(value) != key:
             raise KeyError("KeyedList expected key to be `{}`, but got `{}`. "
                            "Check the value\'s `{}` attribute."
-                           .format(getattr(value, self.attributes.key_name),
-                                   key, self.attributes.key_name))
+                           .format(self.__class__.key_attr.get_value(value),
+                                   key, self.__class__.key_attr))
         super(KeyedList, self).__setitem__(key, value)
 
     def add(self, item):
-        self[getattr(item, self.attributes.key_name)] = item
+        self[self.__class__.key_attr.get_value(item)] = item
 
     def __iter__(self):
         return iter(self.values())
