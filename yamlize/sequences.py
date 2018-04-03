@@ -80,9 +80,9 @@ class Sequence(Yamlizable):
         except Exception:
             return True
 
-    # TODO: this is supposed to return the same value when __eq__ == True
-    def __hash__(self):
-        return id(self)
+    def __iadd__(self, other):
+        self.__items += other
+        return self
 
     @classmethod
     def from_yaml(cls, loader, node, _rtd=None):
@@ -105,19 +105,25 @@ class Sequence(Yamlizable):
 
     @classmethod
     def to_yaml(cls, dumper, self, _rtd=None):
-        if not isinstance(self, cls):
-            raise YamlizingError(
-                'Expected instance of {}, got: {}'.format(
-                    cls, self))
+        # grab the id of the item before we try anything else, that way we can
+        # easily track the original id
+        self_id = id(self)
 
-        if self in dumper.represented_objects:
-            return dumper.represented_objects[self]
+        if not isinstance(self, cls):
+            try:
+                # this makes it possible to do IntList.dump(range(4))
+                self = cls(self)
+            except Exception:
+                raise YamlizingError('Expected instance of {}, got: {}'.format(cls, self))
+
+        if self_id in dumper.represented_objects:
+            return dumper.represented_objects[self_id]
 
         items = []
         node = ruamel.yaml.SequenceNode(
             ruamel.yaml.resolver.BaseResolver.DEFAULT_SEQUENCE_TAG, items)
         self.__round_trip_data.apply(node)
-        dumper.represented_objects[self] = node
+        dumper.represented_objects[self_id] = node
 
         for item in self:
             item_node = self.item_type.to_yaml(dumper, item, self.__round_trip_data)

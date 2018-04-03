@@ -5,7 +5,7 @@ import copy
 import sys
 import six
 
-from yamlize import Attribute, StrList, Sequence, Object
+from yamlize import Attribute, IntList, StrList, Sequence, Object
 
 
 class Test_Sequence_list_methods(unittest.TestCase):
@@ -43,6 +43,27 @@ class Test_Sequence_list_methods(unittest.TestCase):
         self.assertFalse(s_seq != s_list)  # use assertFalse and == to force __eq__ usage
         self.assertFalse(s_list != s_seq)
 
+    def test_anchor(self):
+        class ListLists(Sequence):
+
+            item_type = IntList
+
+        ll = ListLists.load(u'[ &list_1 [0, 1, 2], *list_1 ]')
+        self.assertEqual(id(ll[0]), id(ll[1]))
+        ll[0].append(4)
+
+        self.assertEqual(u'[&list_1 [0, 1, 2, 4], *list_1]',
+                         ListLists.dump(ll).strip())
+
+        ll2 = ListLists()
+        content = list(range(4,6))
+        ll2 += [content]
+        ll2 += [content]
+        self.assertEqual(content, ll2[0])
+
+        self.assertEqual(u'- &id001\n  - 4\n  - 5\n- *id001',
+                         ListLists.dump(ll2).strip())
+
 
 class AnimalWithFriends(Object):
 
@@ -60,6 +81,15 @@ AnimalWithFriends.friends = Attribute(name='friends',
 
 
 class Test_two_way(unittest.TestCase):
+
+    def test_IntList(self):
+        self.assertEqual([1, 2, 3],
+                         IntList.load(IntList.dump([1, 2, 3])))
+
+    def test_StrList(self):
+        abc = 'a b c'.split()
+        self.assertEqual(abc,
+                         StrList.load(StrList.dump(abc)))
 
     test_yaml = ('# no friends :(\n'
                  '- name: Lucy # no friends\n'

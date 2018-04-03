@@ -17,11 +17,11 @@ class StrList(Sequence):
 
 class FloatList(Sequence):
 
-    item_type = float
+    item_type = Typed(float)
 
 
 class IntList(Sequence):
 
-    item_type = int
+    item_type = Typed(int)
 
 

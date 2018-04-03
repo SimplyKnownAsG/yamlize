@@ -154,5 +154,6 @@ class Dynamic(Strong):
     def __new__(self, obj):
         return obj
 
+
 Typed._Typed__types[object] = Dynamic
 
