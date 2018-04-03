@@ -103,10 +103,28 @@ class Typed(type):
 
 
 class Strong(Yamlizable):
+    """
+    The Strongly typed Yamlizable subclass. Subclasses of Strong are dynamically created on demand
+    when someone creates an Attribute with ``type=sometype``.
+
+    Note that there may never be an instance of a Strongint. If there were, it would actually get
+    more complicated because we currently rely upon ``ruamel.yaml`` to give us rational representers
+    and composers. If an ``int`` was cast to a ``Strongint``, then we would need to add a
+    representer into the ``ruamel.yaml.Dumper``.
+    """
 
     __slots__ = ()
 
     __type = None
+
+    def __new__(cls, obj):
+        # this is really only ever called to cast an object that is not the correct type to the
+        # correct type. We generally assume that the correct type is the Strong subclass, but as
+        # stated above, it is easier to keep data as primitives.
+        if isinstance(obj, (cls, cls.__type)):
+            return obj
+
+        return cls.__type(obj)
 
     @classmethod
     def from_yaml(cls, loader, node, round_trip_data):
@@ -115,9 +133,6 @@ class Strong(Yamlizable):
         if not isinstance(data, cls.__type):
             try:
                 new_value = cls.__type(data)  # to coerce to correct type
-                # TODO: round trip data
-                # new_value._set_round_trip_data(node)
-                # loader.constructed_objects[node] = new_value
             except Exception:
                 raise YamlizingError('Failed to coerce data `{}` to type `{}`'
                                      .format(data, cls))
@@ -147,13 +162,5 @@ class Strong(Yamlizable):
         return node
 
 
-class Dynamic(Strong):
-
-    _Strong__type = object
-
-    def __new__(self, obj):
-        return obj
-
-
-Typed._Typed__types[object] = Dynamic
+Dynamic = Typed(object)
 

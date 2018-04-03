@@ -206,10 +206,13 @@ class Attribute(_Attribute):
         return result
 
     def __set__(self, obj, value):
+        value = self.ensure_type(value)
+
         if self.fvalidator is not None:
             if self.fvalidator(value) is False:
                 raise ValueError('Cannot set `{}.{}` to invalid value `{}`'
                                  .format(obj.__class__.__name__, self.name, value))
+
         setattr(obj, self.storage_name, value)
 
     def __delete__(self, obj):

@@ -84,7 +84,6 @@ class Test_from_yaml(unittest.TestCase):
         with self.assertRaises(YamlizingError):
             TypeCheck.load(stream)
 
-    @unittest.skip('TODO: type check list')
     def test_typeCheck_badArray(self):
         stream = six.StringIO('one: 1\narray: this gets converted to a list')
         with self.assertRaises(YamlizingError):
@@ -123,19 +122,15 @@ class Test_to_yaml(unittest.TestCase):
         self.assertIn(' bc', yaml)
 
     def test_TypeCheck_bad(self):
-        tc = TypeCheck(1, 99)
         with self.assertRaises(YamlizingError):
-            TypeCheck.dump(tc)
+            tc = TypeCheck(1, 99)
 
-        tc = TypeCheck('a', [])
         with self.assertRaises(YamlizingError):
-            TypeCheck.dump(tc)
+            tc = TypeCheck('a', [])
 
-    @unittest.skip('TODO: type check list')
     def test_typeCheck_badArray(self):
-        tc = TypeCheck(1, 'this gets converted to a list')
         with self.assertRaises(YamlizingError):
-            TypeCheck.dump(tc)
+            tc = TypeCheck(1, 'this gets converted to a list')
 
 
 class Test_two_way(unittest.TestCase):
