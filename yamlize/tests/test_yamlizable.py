@@ -8,7 +8,6 @@ import six
 from yamlize import Object
 from yamlize import YamlizingError
 from yamlize import Attribute
-from yamlize import yaml_list
 from yamlize.objects import Object
 
 

@@ -44,13 +44,6 @@ class Yamlizable(object):
             setattr(self, k, v)
 
     @classmethod
-    def get_yamlizable_type(cls, type_):
-        if issubclass(type_, Yamlizable):
-            return type_
-        else:
-            return Typed(type_)
-
-    @classmethod
     def load(cls, stream, Loader=ruamel.yaml.RoundTripLoader):
         # can't use ruamel.yaml.load because I need a Resolver/loader for
         # resolving non-string types
@@ -100,6 +93,9 @@ class Typed(type):
     __types = {}
 
     def __new__(mcls, type_):
+        if issubclass(type_, Yamlizable):
+            return type_
+
         if type_ not in mcls.__types:
             mcls.__types[type_] = type('Yamlizable' + type_.__name__,
                                        (Strong,), {'_Strong__type': type_})
@@ -151,5 +147,12 @@ class Strong(Yamlizable):
         return node
 
 
-Dynamic = Typed(object)
+class Dynamic(Strong):
+
+    _Strong__type = object
+
+    def __new__(self, obj):
+        return obj
+
+Typed._Typed__types[object] = Dynamic
 

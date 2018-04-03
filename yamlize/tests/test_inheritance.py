@@ -6,7 +6,6 @@ from yamlize import Dynamic
 from yamlize import Object
 from yamlize import KeyedList
 from yamlize import Sequence
-from yamlize import yaml_map
 from yamlize import YamlizingError
 
 

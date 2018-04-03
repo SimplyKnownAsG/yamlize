@@ -87,7 +87,7 @@ class Attribute(_Attribute):
 
     def __init__(self, name=None, key=None, type=NODEFAULT, default=NODEFAULT, validator=None,
                  doc=None):
-        from yamlize.yamlizable import Yamlizable, Dynamic
+        from yamlize.yamlizable import Dynamic, Typed
 
         # initialize _name for .name assignment
         self._name = None
@@ -101,7 +101,7 @@ class Attribute(_Attribute):
         if type == NODEFAULT:
             self.type = Dynamic
         else:
-            self.type = Yamlizable.get_yamlizable_type(type)
+            self.type = Typed(type)
 
     @property
     def name(self):

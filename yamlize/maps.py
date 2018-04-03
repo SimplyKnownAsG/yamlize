@@ -142,8 +142,6 @@ class __MapBase(six.with_metaclass(MapType, Object)):
 class Map(__MapBase):
     """
     Basic Map is an ordered dictionary of keys/values.
-
-    Create a Map subclass using `yaml_map`
     """
 
     __slots__ = ()
