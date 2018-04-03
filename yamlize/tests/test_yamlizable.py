@@ -175,6 +175,13 @@ class Test_two_way(unittest.TestCase):
         self.assertEqual(poss3.name, 'Possum')
         self.assertEqual(poss3.friend.name, 'Maggie')
 
+    def test_bool(self):
+        class B(Object):
+            val = Attribute(type=bool)
+
+        self.assertTrue(B.load(B.dump(B.load('val: true'))).val)
+        self.assertFalse(B.load(B.dump(B.load('val: false'))).val)
+
 
 if __name__ == '__main__':
     unittest.main()

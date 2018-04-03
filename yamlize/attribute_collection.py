@@ -84,7 +84,7 @@ class AttributeCollection(object):
         new_attrs = []
 
         for attr in self:
-            if attr.has_default and attr.get_value(obj) == attr.default:
+            if attr.has_default(obj):
                 if attr in attr_order:
                     attr_order.remove(attr)
                 continue

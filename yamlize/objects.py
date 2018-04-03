@@ -239,9 +239,7 @@ class Object(six.with_metaclass(ObjectType, Yamlizable)):
             if attribute in applied_attrs:
                 continue
 
-            if attribute.has_default:
-                attribute.set_value(self, attribute.default)
-            else:
+            if attribute.is_required:
                 # hold on to a running list so user doesn't need to rerun
                 # to find //each// error, but can find all of then at once
                 missing_required_attrs.append(attribute.name)

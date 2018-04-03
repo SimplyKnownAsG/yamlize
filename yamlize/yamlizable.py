@@ -152,10 +152,16 @@ class Strong(Yamlizable):
     def to_yaml(cls, dumper, data, round_trip_data):
         if not isinstance(data, cls.__type):
             try:
-                data = cls.__type(data)  # to coerce to correct type
-            except BaseException:
+                new_value = cls.__type(data)  # to coerce to correct type
+            except Exception:
                 raise YamlizingError('Failed to coerce data `{}` to type `{}`'
                                      .format(data, cls))
+
+            try:
+                if new_value == data:
+                    data = new_value
+            except Exception:
+                pass
 
         node = dumper.represent_data(data)
         round_trip_data[data].apply(node)

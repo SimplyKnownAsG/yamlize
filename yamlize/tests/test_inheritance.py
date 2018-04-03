@@ -274,7 +274,12 @@ reqopt2_from_reqopt: {<<: *reqopt, opt1: howdy how}
         reqopts = ReqOpts.load(TestOptionalAttributes.inheritance_with_optional)
 
         reqopt = reqopts['reqopt_from_reqonly2']
-        reqopt.opt1 = None # sets to default
+        reqopt.opt1 = None  # explicit default should still show up
+        actual = ReqOpts.dump(reqopts).strip()
+        self.assertRegexpMatches(actual, r'reqopt_from_reqonly2:.*<<: \*reqonly, .*null', actual)
+
+        del reqopt.opt1  # sets to default, and remoes value
+        self.assertEqual(None, reqopt.opt1)
         actual = ReqOpts.dump(reqopts).strip()
         self.assertRegexpMatches(actual, r'reqopt_from_reqonly2: \*reqonly', actual)
 

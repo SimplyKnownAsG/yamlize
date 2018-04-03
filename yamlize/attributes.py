@@ -41,8 +41,7 @@ class _Attribute(object):
         return sum(hash(getattr(self, attr_name))
                    for attr_name in self.__class__.__slots__)
 
-    @property
-    def has_default(self):
+    def has_default(self, obj):
         raise NotImplementedError
 
     @property
@@ -117,9 +116,8 @@ class Attribute(_Attribute):
         if self.key is None:
             self.key = name
 
-    @property
-    def has_default(self):
-        return self.default is not NODEFAULT
+    def has_default(self, obj):
+        return not hasattr(obj, self.storage_name)
 
     @property
     def is_required(self):
@@ -145,14 +143,7 @@ class Attribute(_Attribute):
         return new_value
 
     def from_yaml(self, obj, loader, node, round_trip_data):
-        from yamlize.yamlizable import Yamlizable
-        if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
-            value = self.type.from_yaml(loader, node, round_trip_data)
-
-        else:
-            # this will happen for something that is not subclass-able (bool)
-            value = loader.construct_object(node, deep=True)
-            value = self.ensure_type(value, node)
+        value = self.type.from_yaml(loader, node, round_trip_data)
 
         try:
             self.set_value(obj, value)
@@ -162,28 +153,12 @@ class Attribute(_Attribute):
                                  .format(self.name, value, ee), node)
 
     def to_yaml(self, obj, dumper, node_items, round_trip_data):
-        from yamlize.yamlizable import Yamlizable
-        data = self.get_value(obj)
-
-        if self.has_default and data == self.default:
+        if self.has_default(obj):
             # short circuit, don't write out default data
             return
 
-        if inspect.isclass(self.type) and issubclass(self.type, Yamlizable):
-            val_node = self.type.to_yaml(dumper, data, round_trip_data)
-
-        # this will happen for something that is not subclass-able (bool)
-        else:
-            if not isinstance(data, self.type):
-                try:
-                    data = self.type(data)
-                except BaseException:
-                    raise YamlizingError(
-                        'Failed to coerce value `{}` to type `{}`'
-                        .format(data, self.type))
-
-            val_node = dumper.represent_data(data)
-
+        data = self.get_value(obj)
+        val_node = self.type.to_yaml(dumper, data, round_trip_data)
         key_node = dumper.represent_data(self.key)
         node_items.append((key_node, val_node))
 
@@ -236,8 +211,7 @@ class MapItem(_Attribute):
         self.key_type = key_type
         self.val_type = val_type
 
-    @property
-    def has_default(self):
+    def has_default(self, obj):
         return False
 
     @property
@@ -245,22 +219,8 @@ class MapItem(_Attribute):
         return False
 
     def to_yaml(self, obj, dumper, node_items, round_trip_data):
-        from yamlize.yamlizable import Yamlizable
         data = self.get_value(obj)
-
-        if inspect.isclass(self.val_type) and issubclass(self.val_type, Yamlizable):
-            val_node = self.val_type.to_yaml(dumper, data, round_trip_data)
-
-        # this will happen for something that is not subclass-able (bool)
-        elif not isinstance(data, self.type):
-            try:
-                data = self.type(data)
-            except BaseException:
-                raise YamlizingError('Failed to coerce value `{}` to type `{}`'
-                                     .format(data, self.type))
-
-            val_node = dumper.represent_data(data)
-
+        val_node = self.val_type.to_yaml(dumper, data, round_trip_data)
         key_node = self.key_type.to_yaml(dumper, self.key, round_trip_data)
         node_items.append((key_node, val_node))
 
@@ -286,8 +246,7 @@ class KeyedListItem(_Attribute):
         self.item_type = item_type
         self.item_key = item_key
 
-    @property
-    def has_default(self):
+    def has_default(self, obj):
         return False
 
     @property
