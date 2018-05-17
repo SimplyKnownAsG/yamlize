@@ -76,6 +76,7 @@ class Test_from_yaml(unittest.TestCase):
         self.assertEqual('a bc'.split(), tc.array)
 
     def test_TypeCheck_bad(self):
+        tc = TypeCheck(1, [])
         stream = six.StringIO('one: 1\narray: 99')
         with self.assertRaises(YamlizingError):
             tc = TypeCheck.load(stream)
@@ -88,6 +89,33 @@ class Test_from_yaml(unittest.TestCase):
         stream = six.StringIO('one: 1\narray: this gets converted to a list')
         with self.assertRaises(YamlizingError):
             TypeCheck.load(stream)
+
+    def test_default_None_with_differing_types(self):
+        class DefaultNone(Object):
+            my_int = Attribute(type=int, default=None)
+            my_str = Attribute(type=str, default=None)
+            my_float = Attribute(type=float, default=None)
+            my_bool = Attribute(type=bool, default=None)
+
+        dn = DefaultNone()
+        self.assertEqual('{}\n', DefaultNone.dump(dn))
+        dn.my_int = None
+        dn.my_str = None
+        dn.my_float = None
+        dn.my_bool = None
+
+        # there is no guarantee of order in < Python3.6 https://www.python.org/dev/peps/pep-0520/
+        actual = DefaultNone.dump(dn)
+        self.assertIn('my_int:\n', actual)
+        self.assertIn('my_float:\n', actual)
+        self.assertIn('my_bool:\n', actual)
+
+        # also, we can read it
+        dn2 = DefaultNone.load(DefaultNone.dump(dn))
+        self.assertIsNone(dn2.my_int)
+        self.assertIsNone(dn2.my_str)
+        self.assertIsNone(dn2.my_float)
+        self.assertIsNone(dn2.my_bool)
 
 
 class Test_to_yaml(unittest.TestCase):

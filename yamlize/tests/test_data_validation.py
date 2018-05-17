@@ -8,11 +8,11 @@ class PositivePoint(Object):
     x = Attribute(type=float)
 
     @x.validator
-    def x(x):
+    def x(self, x):
         if x < 0.0:
             raise ValueError('Cannot set PositivePoint.x to {}'.format(x))
 
-    y = Attribute(type=float, validator=lambda y: y > 0)
+    y = Attribute(type=float, validator=lambda self, y: y > 0)
 
 
 class TestDataValidation(unittest.TestCase):

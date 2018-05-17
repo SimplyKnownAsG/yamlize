@@ -341,6 +341,30 @@ Tuesday:
         actual = Menus.dump(menus).strip()
         self.assertEqual(self.__class__.daily_menus, actual)
 
+    def test_assignKeyedListItem(self):
+        class MenuItem(Map):
+            key_type = Typed(str)
+            value_type = Dynamic
+            name = Attribute(type=str)
+
+        class DailyMenu(KeyedList):
+            key_attr = MenuItem.name
+            item_type = MenuItem
+            day = Attribute(type=str)
+            def __init__(self, day):
+                self.day = day
+
+        class Menus(KeyedList):
+            key_attr = DailyMenu.day
+            item_type = DailyMenu
+
+        menus = Menus.load(self.__class__.daily_menus)
+        wed = DailyMenu('Wednesday')
+        menus.add(wed)
+        wed.add(menus['Monday']['blt'])
+        actual = Menus.dump(menus).strip()
+        self.assertEqual(self.__class__.daily_menus + '\nWednesday:\n  blt: *blt', actual)
+
     def test_pickleable(self):
         kennel = NamedKennel.load(named_kennel_yaml)
         for protocol in range(pickle.HIGHEST_PROTOCOL + 1):

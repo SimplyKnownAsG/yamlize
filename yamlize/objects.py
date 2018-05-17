@@ -268,11 +268,11 @@ class Object(six.with_metaclass(ObjectType, Yamlizable)):
             raise YamlizingError('Expected instance of {}, got: {}'
                                  .format(cls, self))
 
-        if self in dumper.represented_objects:
-            return dumper.represented_objects[self]
-
         items = []
         key_attribute.to_yaml(self, dumper, items, self.__round_trip_data)
+
+        if self in dumper.represented_objects:
+            return items[0][1], dumper.represented_objects[self]
 
         node = self.__to_yaml(dumper, key_attribute)
 

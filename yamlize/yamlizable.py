@@ -135,12 +135,12 @@ class Strong(Yamlizable):
                 new_value = cls.__type(data)  # to coerce to correct type
             except Exception:
                 raise YamlizingError('Failed to coerce data `{}` to type `{}`'
-                                     .format(data, cls))
+                                     .format(data, cls.__type))
 
             if new_value != data:
+                # common case for Attribute(type=str, default=None) ... str(None) != 'None'
                 raise YamlizingError(
-                    'Coerced `{}` to `{}`, but the new value `{}`'
-                    ' is not equal to old `{}`.'
+                    'Coerced `{}` to `{}`, but the new value `{}` is not equal to old `{}`.'
                     .format(type(data), type(new_value), new_value, data), node)
 
             data = new_value

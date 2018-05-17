@@ -5,7 +5,7 @@ import copy
 import sys
 import six
 
-from yamlize import Attribute, IntList, StrList, Sequence, Object
+from yamlize import Attribute, IntList, StrList, Sequence, Object, YamlizingError
 
 
 class Test_Sequence_list_methods(unittest.TestCase):
@@ -64,6 +64,35 @@ class Test_Sequence_list_methods(unittest.TestCase):
         self.assertEqual(u'- &id001\n  - 4\n  - 5\n- *id001',
                          ListLists.dump(ll2).strip())
 
+    def test_attribute_assignment(self):
+        class ClassWithLists(Object):
+            ints = Attribute(type=IntList)
+            strs = Attribute(type=StrList)
+
+        cwl = ClassWithLists()
+
+        with self.assertRaises(YamlizingError):
+            cwl.ints = 123
+
+        cwl.ints = [1, 2, 3]
+
+        with self.assertRaises(YamlizingError):
+            cwl.strs = 'abc'
+
+        cwl.strs = 'abc'.split()
+        ClassWithLists.dump(cwl)
+
+    def test_attribute_default(self):
+        class ClassWithLists(Object):
+            ints = Attribute(type=IntList, default=None)
+
+        cwl = ClassWithLists()
+        self.assertEqual('{}\n', ClassWithLists.dump(cwl))
+        cwl.ints = None
+        self.assertEqual('ints:\n', ClassWithLists.dump(cwl))
+        del cwl.ints
+        self.assertEqual('{}\n', ClassWithLists.dump(cwl))
+
 
 class AnimalWithFriends(Object):
 
@@ -83,13 +112,18 @@ AnimalWithFriends.friends = Attribute(name='friends',
 class Test_two_way(unittest.TestCase):
 
     def test_IntList(self):
-        self.assertEqual([1, 2, 3],
-                         IntList.load(IntList.dump([1, 2, 3])))
+        self.assertEqual([1, 2, 3], IntList.load(IntList.dump([1, 2, 3])))
+        il = IntList((1, 2, 3))
+        self.assertEqual([1, 2, 3], il)
+        with self.assertRaises(TypeError):
+            IntList(123)
 
     def test_StrList(self):
         abc = 'a b c'.split()
-        self.assertEqual(abc,
-                         StrList.load(StrList.dump(abc)))
+        self.assertEqual(abc, StrList.load(StrList.dump(abc)))
+        self.assertEqual(3, len(abc))
+        with self.assertRaises(TypeError):
+            StrList('a b c')
 
     test_yaml = ('# no friends :(\n'
                  '- name: Lucy # no friends\n'

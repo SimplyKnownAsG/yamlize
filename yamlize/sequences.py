@@ -3,7 +3,7 @@ import ruamel.yaml
 from six.moves import zip
 
 from .round_trip_data import RoundTripData
-from .yamlizable import Yamlizable, Dynamic
+from .yamlizable import Yamlizable, Dynamic, Typed
 from .yamlizing_error import YamlizingError
 
 
@@ -16,16 +16,14 @@ class Sequence(Yamlizable):
     def __init__(self, items=()):
         Yamlizable.__init__(self)
         self.__round_trip_data = RoundTripData(None)
-        self.__items = list(items)
+        self.__items = []
+        self.extend(items)
 
     def __getstate__(self):
         return list(self.__items)
 
     def __setstate__(self, state):
         self.__init__(state)
-
-    def __getattr__(self, attr_name):
-        return getattr(self.__items, attr_name)
 
     def __iter__(self):
         return iter(self.__items)
@@ -50,6 +48,9 @@ class Sequence(Yamlizable):
 
     def __eq__(self, other):
         try:
+            if not isinstance(other, (self.__class__, list)):
+                return False
+
             if len(self) != len(other):
                 return False
 
@@ -67,6 +68,9 @@ class Sequence(Yamlizable):
 
     def __ne__(self, other):
         try:
+            if not isinstance(other, (self.__class__, list)):
+                return True
+
             if len(self) != len(other):
                 return True
 
@@ -83,6 +87,20 @@ class Sequence(Yamlizable):
     def __iadd__(self, other):
         self.__items += other
         return self
+
+    def append(self, item):
+        if not isinstance(item, self.item_type):
+            item = self.item_type(item)
+
+        self.__items.append(item)
+
+    def extend(self, items):
+        if not isinstance(items, (list, tuple, Sequence)):
+            raise TypeError('Cannot extend items in a {} with {}'
+                            .format(self.__class__, type(items)))
+
+        for item in items:
+            self.append(item)
 
     @classmethod
     def from_yaml(cls, loader, node, _rtd=None):
@@ -130,4 +148,20 @@ class Sequence(Yamlizable):
             items.append(item_node)
 
         return node
+
+
+class FloatList(Sequence):
+
+    item_type = Typed(float)
+
+
+class IntList(Sequence):
+
+    item_type = Typed(int)
+
+
+class StrList(Sequence):
+
+    item_type = Typed(str)
+
 

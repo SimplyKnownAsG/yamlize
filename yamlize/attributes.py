@@ -136,14 +136,22 @@ class Attribute(_Attribute):
         if new_value != data:
             raise YamlizingError('Coerced `{}` to `{}`, but the new value `{}`'
                                  ' is not equal to old `{}`.'
-                                 .format(type(data), type(new_value),
-                                         new_value, data),
+                                 .format(type(data), type(new_value), new_value, data),
                                  node)
 
         return new_value
 
     def from_yaml(self, obj, loader, node, round_trip_data):
-        value = self.type.from_yaml(loader, node, round_trip_data)
+        try:
+            # it is possible that we attempted to coerce None -> int, when None was the default
+            value = self.type.from_yaml(loader, node, round_trip_data)
+        except YamlizingError:
+            if self.is_required:
+                raise
+            else:
+                value = loader.construct_object(node, deep=True)
+                if value != self.default:
+                    raise
 
         try:
             self.set_value(obj, value)
@@ -158,7 +166,14 @@ class Attribute(_Attribute):
             return
 
         data = self.get_value(obj)
-        val_node = self.type.to_yaml(dumper, data, round_trip_data)
+        try:
+            val_node = self.type.to_yaml(dumper, data, round_trip_data)
+        except YamlizingError:
+            if data == self.default:
+                val_node = dumper.represent_data(data)
+            else:
+                raise
+
         key_node = dumper.represent_data(self.key)
         node_items.append((key_node, val_node))
 
@@ -184,7 +199,7 @@ class Attribute(_Attribute):
         value = self.ensure_type(value)
 
         if self.fvalidator is not None:
-            if self.fvalidator(value) is False:
+            if self.fvalidator(obj, value) is False:
                 raise ValueError('Cannot set `{}.{}` to invalid value `{}`'
                                  .format(obj.__class__.__name__, self.name, value))
 

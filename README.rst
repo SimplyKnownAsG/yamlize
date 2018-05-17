@@ -33,6 +33,8 @@ A couple important notes:
   create an instance and ``setattr(obj, name, value)`` to set attributes read from YAML. If you
   would like to customize some sort of initialization you can create your own ``__new__`` method,
   or override Yamlizable.from_yaml_
+* The actual storage name of an attribute is different than the name of the attribute. Specifically,
+  the storage name is ``'_yamlized_' + name``.
 * ``yamlize`` can be used for data validation, search "data validation" within the page for various
   topics of interest.
 * Within the examples, you may notice ``<BLANKLINE>`` simply indicating that there is a newline at
@@ -253,18 +255,38 @@ Not all types can be tricked, and pull requests are welcome to fix unintended si
 >>> StronglyTypedThing.load(u'''
 ... my_int: 1001
 ... my_float: 1e99
-... my_str: 1.234    # YAML parsers generate a float, but this should be '12.0' (with quotes)
+... my_str: 1.234
 ... ''') # doctest: +IGNORE_EXCEPTION_DETAIL
 Traceback (most recent call last):
     ...
 YamlizingError: Coerced `<class 'ruamel.yaml.scalarfloat.ScalarFloat'>` to `<type 'str'>`, but the new value `1.234` is not equal to old `1.234`.
 start:   in "<unicode string>", line 4, column 9:
-    my_str: 1.234    # YAML parsers generate ...
+    my_str: 1.234
             ^ (line: 4)
 end:   in "<unicode string>", line 4, column 14:
-    my_str: 1.234    # YAML parsers generate a fl ...
+    my_str: 1.234
                  ^ (line: 4)
 
+The type data validation also works for attribute assignment.
+
+>>> from yamlize import Object, Attribute
+>>>
+>>> class StronglyTypedThing(Object):
+...
+...     my_int = Attribute(type=int)
+...     my_float = Attribute(type=float)
+...     my_str = Attribute(type=str)
+...
+>>>
+>>> stt = StronglyTypedThing()
+>>> stt.my_int = 12
+>>> stt.my_float = 1.01
+>>> stt.my_str = 'abc'
+>>> # now... lets try a badly typed operand
+>>> stt.my_int = 12.34  # doctest: +IGNORE_EXCEPTION_DETAIL
+Traceback (most recent call last):
+    ...
+yamlize.yamlizing_error.YamlizingError: Coerced `<class 'float'>` to `<class 'int'>`, but the new value `12` is not equal to old `12.34`.
 
 .. _attribute defaults:
 
@@ -326,12 +348,12 @@ failing YAML node.
 ...
 ...     # raise a custom exception
 ...     @x.validator
-...     def x(x):
+...     def x(self, x):
 ...         if x < 0.0:
 ...             raise ValueError('Cannot set PositivePoint.x to {}'.format(x))
 ...
 ...     # or, return False when the value is not valid
-...     y = Attribute(type=float, validator=lambda y: y >= 0)
+...     y = Attribute(type=float, validator=lambda self, y: y >= 0)
 >>>
 >>> PositivePoint.load(u'{ x: -0.0000001, y: 1.0}')  # doctest: +IGNORE_EXCEPTION_DETAIL
 Traceback (most recent call last):
