@@ -1,12 +1,16 @@
 import unittest
 import re
 
+import aenum
+
 from yamlize import Attribute
 from yamlize import Dynamic
 from yamlize import Object
+from yamlize import Map
 from yamlize import KeyedList
 from yamlize import Sequence
 from yamlize import YamlizingError
+from yamlize import Typed
 
 
 class Animal(Object):
@@ -283,6 +287,66 @@ reqopt2_from_reqopt: {<<: *reqopt, opt1: howdy how}
         actual = ReqOpts.dump(reqopts).strip()
         self.assertRegexpMatches(actual, r'reqopt_from_reqonly2: \*reqonly', actual)
 
+
+class Sex(aenum.Enum):
+    FEMALE = aenum.auto()
+    MALE = aenum.auto()
+
+
+TypedSex = Typed(Sex,
+        from_yaml=lambda loader, node, rtd: Sex[loader.construct_object(node)],
+        to_yaml=lambda dumper, data, rtd: dumper.represent_data(str(data).replace('Sex.', '')))
+
+
+class Person(Object):
+    sex = Attribute(type=TypedSex)
+
+
+class Sexes(Sequence):
+    item_type = TypedSex
+
+
+class SexedPeople(Map):
+    key_type = TypedSex
+    value_type = Typed(str)
+
+class PeopleSexed(Map):
+    key_type = Typed(str)
+    value_type = TypedSex
+
+
+class TestNonSubclass(unittest.TestCase):
+
+    def test_nonsubclass_as_attribute(self):
+        ok = Person.load('sex: MALE')
+        self.assertEqual(ok.sex, Sex.MALE)
+        self.assertEqual('sex: MALE', Person.dump(ok).strip())
+
+        better = Person.load('sex: FEMALE')
+        self.assertEqual(better.sex, Sex.FEMALE)
+        self.assertEqual('sex: FEMALE', Person.dump(better).strip())
+
+        with self.assertRaises(KeyError):
+            Person.load('sex: female')  # wrong case
+
+    def test_nonsubclass_as_list_item(self):
+        sexes = Sexes.load('[FEMALE, MALE]')
+        self.assertEqual('[FEMALE, MALE]', Sexes.dump(sexes).strip())
+        self.assertEqual(2, len(sexes))
+        self.assertEqual(Sex.FEMALE, sexes[0])
+        self.assertEqual(Sex.MALE, sexes[1])
+
+    def test_nonsubclass_as_list_dict_key(self):
+        peeps = SexedPeople.load('FEMALE: the girl\nMALE: the boy')
+        self.assertEqual('FEMALE: the girl\nMALE: the boy', SexedPeople.dump(peeps).strip())
+        self.assertEqual('the girl', peeps[Sex.FEMALE])
+        self.assertEqual('the boy', peeps[Sex.MALE])
+
+    def test_nonsubclass_as_list_dict_value(self):
+        peeps = PeopleSexed.load('the girl: FEMALE\nthe boy: MALE')
+        self.assertEqual('the girl: FEMALE\nthe boy: MALE', PeopleSexed.dump(peeps).strip())
+        self.assertEqual(Sex.FEMALE, peeps['the girl'])
+        self.assertEqual(Sex.MALE, peeps['the boy'])
 
 if __name__ == '__main__':
     unittest.main()

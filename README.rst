@@ -748,6 +748,39 @@ You can also use ``Yamlizable.from_yaml`` for handling subclassing.
 <BLANKLINE>
 
 
+Subclassing 2 -- when you can't subclass
+++++++++++++++++++++++++++++++++++++++++
+Under most conditions ``yamlize`` needs attributes and items to be subclasses of
+``yamlize.Yamlizable``. This can cause problems when you have some data that otherwise just doesn't
+need to be subclassed. ``yamlize`` allows you to specify specific conversion methods to and from
+YAML in these instances.
+
+>>> from yamlize import Object
+>>> import aenum
+>>> 
+>>> class Sex(aenum.Enum):
+...     FEMALE = aenum.auto()
+...     MALE = aenum.auto()
+>>>
+>>> TypedSex = Typed(Sex,
+...         from_yaml=lambda loader, node, rtd: Sex[loader.construct_object(node)],
+...         to_yaml=lambda dumper, data, rtd: dumper.represent_data(str(data).replace('Sex.', '')))
+>>>
+
+With the above, you can now use ``TypedSex`` to ensure proper typing of the enumeration. For
+example:
+
+>>> class Person(Object):
+...     name = Attribute(type=str)      # as an FYI, under the hood 'str' becomes Typed(str)
+...     sex = Attribute(type=TypedSex)
+>>>
+>>> me = Person.load('{name: me, sex: MALE}')
+>>> me.name
+'me'
+>>> str(me.sex)
+'Sex.MALE'
+
+
 Why not just serialze with PyYAML?
 ==================================
 PyYAML serialization requires (without custom implicit tag resolvers) that your YAML indicate the

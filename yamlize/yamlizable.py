@@ -58,7 +58,7 @@ class Yamlizable(object):
     def dump(cls, data, stream=None, Dumper=ruamel.yaml.RoundTripDumper):
         # can't use ruamel.yaml.load because I need a Resolver/loader for
         # resolving non-string types
-        convert_to_string = stream is None
+        convert_to_yaml = stream is None
         stream = stream or six.StringIO()
         dumper = Dumper(stream)
 
@@ -74,7 +74,7 @@ class Yamlizable(object):
                 raise
                 dumper.dispose()  # cyaml
 
-        if convert_to_string:
+        if convert_to_yaml:
             return stream.getvalue()
 
         return None
@@ -92,13 +92,18 @@ class Typed(type):
 
     __types = {}
 
-    def __new__(mcls, type_):
+    def __new__(mcls, type_, from_yaml=None, to_yaml=None, compare_after_cast=True):
         if issubclass(type_, Yamlizable):
             return type_
 
         if type_ not in mcls.__types:
             mcls.__types[type_] = type('Yamlizable' + type_.__name__,
-                                       (Strong,), {'_Strong__type': type_})
+                                       (Strong,),
+                                       {'_Strong__type': type_,
+                                        '_Strong__from_yaml': staticmethod(from_yaml),
+                                        '_Strong__to_yaml': staticmethod(to_yaml),
+                                        '_Strong__compare_after_cast': compare_after_cast}
+                                       )
         return mcls.__types[type_]
 
 
@@ -117,6 +122,12 @@ class Strong(Yamlizable):
 
     __type = None
 
+    __from_yaml = None
+
+    __to_yaml = None
+
+    __compare_after_cast = None
+
     def __new__(cls, obj):
         # this is really only ever called to cast an object that is not the correct type to the
         # correct type. We generally assume that the correct type is the Strong subclass, but as
@@ -128,7 +139,10 @@ class Strong(Yamlizable):
 
     @classmethod
     def from_yaml(cls, loader, node, round_trip_data):
-        data = loader.construct_object(node, deep=True)
+        if cls.__from_yaml is not None:
+            data = cls.__from_yaml.__call__(loader, node, round_trip_data)
+        else:
+            data = loader.construct_object(node, deep=True)
 
         if not isinstance(data, cls.__type):
             try:
@@ -137,11 +151,12 @@ class Strong(Yamlizable):
                 raise YamlizingError('Failed to coerce data `{}` to type `{}`'
                                      .format(data, cls.__type))
 
-            if new_value != data:
-                # common case for Attribute(type=str, default=None) ... str(None) != 'None'
-                raise YamlizingError(
-                    'Coerced `{}` to `{}`, but the new value `{}` is not equal to old `{}`.'
-                    .format(type(data), type(new_value), new_value, data), node)
+            if cls.__compare_after_cast:
+                if new_value != data:
+                    # common case for Attribute(type=str, default=None) ... str(None) != 'None'
+                    raise YamlizingError(
+                        'Coerced `{}` to `{}`, but the new value `{}` is not equal to old `{}`.'
+                        .format(type(data), type(new_value), new_value, data), node)
 
             data = new_value
 
@@ -157,13 +172,18 @@ class Strong(Yamlizable):
                 raise YamlizingError('Failed to coerce data `{}` to type `{}`'
                                      .format(data, cls))
 
-            try:
-                if new_value == data:
-                    data = new_value
-            except Exception:
-                pass
+            if cls.__compare_after_cast:
+                try:
+                    if new_value == data:
+                        data = new_value
+                except Exception:
+                    pass
 
-        node = dumper.represent_data(data)
+        if cls.__to_yaml is not None:
+            node = cls.__to_yaml.__call__(dumper, data, round_trip_data)
+        else:
+            node = dumper.represent_data(data if cls.__to_yaml is None else cls.__to_yaml(data))
+
         round_trip_data[data].apply(node)
         return node
 

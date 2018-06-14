@@ -6,7 +6,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.6.0',
+    version='0.6.1',
 
     description='yamlize, a package for Python object serialization and data validaiton.',
     long_description='see https://github.com/SimplyKnownAsG/yamlize/blob/master/README.rst',
@@ -23,7 +23,7 @@ setup(
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
         # How mature is this project?
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
 
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
@@ -37,9 +37,9 @@ setup(
         # that you indicate whether you support Python 2, Python 3 or both.
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ],
 
     # What does your project relate to?
@@ -58,7 +58,7 @@ setup(
 
     # List additional groups of dependencies here (e.g. development dependencies)
     extras_require={
-        'dev': ['yaml', 'pytest', 'pycodestyle', 'sphinx'],
+        'dev': ['yaml', 'pytest', 'pycodestyle', 'sphinx', 'aenum'],
     },
 
     # # Data files
