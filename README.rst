@@ -797,7 +797,8 @@ certain type of object may exist. For example:
 >>> a = A('attribute value')
 >>> import yaml
 >>> print(yaml.dump(a))
-!!python/object:__main__.A {attr: attribute value}
+!!python/object:__main__.A
+attr: attribute value
 <BLANKLINE>
 
 

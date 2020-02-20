@@ -61,7 +61,7 @@ class Test_NamedKennel(unittest.TestCase):
         poss = Animal('Possum', 5)
         kennel = NamedKennel()
         self.assertEqual('Possum', Animal.name.__get__(poss))
-        with self.assertRaisesRegexp(KeyError, 'expected.*`Possum`'):
+        with self.assertRaisesRegex(KeyError, 'expected.*`Possum`'):
             kennel[5] = poss
 
 

@@ -58,7 +58,7 @@ setup(
 
     # List additional groups of dependencies here (e.g. development dependencies)
     extras_require={
-        'dev': ['yaml', 'pytest', 'pycodestyle', 'sphinx', 'aenum'],
+        'dev': ['yaml', 'pytest', 'pycodestyle', 'sphinx', 'aenum', 'numpy'],
     },
 
     # # Data files

@@ -93,7 +93,7 @@ things:
             data = Attribute()
             things = Attribute(type=Things)
 
-        with self.assertRaisesRegexp(YamlizingError, 'this will fail'):
+        with self.assertRaisesRegex(YamlizingError, 'this will fail'):
             BadData.load(TestMergeAndAnchor.bad_data_merge)
 
     list_inheritance = """
@@ -272,7 +272,7 @@ reqopt2_from_reqopt: {<<: *reqopt, opt1: howdy how}
         self.assertEqual(None, reqonly2.opt1)
         reqonly2.opt1 = 'changed'
         actual = ReqOpts.dump(reqopts).strip()
-        self.assertRegexpMatches(actual, r'reqonly2:[\{\s\r\n]+<<: \*reqonly[,\s\r\n]+opt1: changed', actual)
+        self.assertRegex(actual, r'reqonly2:[\{\s\r\n]+<<: \*reqonly[,\s\r\n]+opt1: changed', actual)
 
     def test_del_optional(self):
         reqopts = ReqOpts.load(TestOptionalAttributes.inheritance_with_optional)
@@ -280,12 +280,12 @@ reqopt2_from_reqopt: {<<: *reqopt, opt1: howdy how}
         reqopt = reqopts['reqopt_from_reqonly2']
         reqopt.opt1 = None  # explicit default should still show up
         actual = ReqOpts.dump(reqopts).strip()
-        self.assertRegexpMatches(actual, r'reqopt_from_reqonly2:.*<<: \*reqonly, .*null', actual)
+        self.assertRegex(actual, r'reqopt_from_reqonly2:.*<<: \*reqonly, .*null', actual)
 
         del reqopt.opt1  # sets to default, and remoes value
         self.assertEqual(None, reqopt.opt1)
         actual = ReqOpts.dump(reqopts).strip()
-        self.assertRegexpMatches(actual, r'reqopt_from_reqonly2: \*reqonly', actual)
+        self.assertRegex(actual, r'reqopt_from_reqonly2: \*reqonly', actual)
 
 
 class Sex(aenum.Enum):
