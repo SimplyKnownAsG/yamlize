@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 from yamlize import Object, YamlizingError, Attribute
 
 
@@ -25,6 +27,13 @@ class TestDataValidation(unittest.TestCase):
         p.y = 1e99
         with self.assertRaises(ValueError):
             p.x = -1.0e-99
+
+    def test_numpy_cool(self):
+        p = PositivePoint()
+        p.x = numpy.float64(10)
+
+        # this should not result in an error.
+        PositivePoint.dump(p)
 
     def test_load_properties(self):
         with self.assertRaises(YamlizingError):

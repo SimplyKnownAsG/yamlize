@@ -13,13 +13,13 @@ class Yamlizable(object):
     def __getstate__(self):
         state = {}
 
-        if hasattr(self, '__dict__'):
+        if hasattr(self, "__dict__"):
             state.update(self.__dict__)
 
         applied_slots = set((None,))  # populated with None
 
         for cls in reversed(type(self).__mro__):
-            cls_slots = getattr(cls, '__slots__', None)
+            cls_slots = getattr(cls, "__slots__", None)
 
             if cls_slots in applied_slots:
                 continue
@@ -27,9 +27,9 @@ class Yamlizable(object):
             applied_slots.add(cls_slots)
 
             for attr_name in cls_slots:
-                if attr_name.startswith('__'):
-                    attr_name = '_{}{}'.format(cls.__name__, attr_name)
-                    while attr_name.startswith('__'):
+                if attr_name.startswith("__"):
+                    attr_name = "_{}{}".format(cls.__name__, attr_name)
+                    while attr_name.startswith("__"):
                         attr_name = attr_name[1:]
 
                 if attr_name in state:
@@ -97,13 +97,16 @@ class Typed(type):
             return type_
 
         if type_ not in mcls.__types:
-            mcls.__types[type_] = type('Yamlizable' + type_.__name__,
-                                       (Strong,),
-                                       {'_Strong__type': type_,
-                                        '_Strong__from_yaml': staticmethod(from_yaml),
-                                        '_Strong__to_yaml': staticmethod(to_yaml),
-                                        '_Strong__compare_after_cast': compare_after_cast}
-                                       )
+            mcls.__types[type_] = type(
+                "Yamlizable" + type_.__name__,
+                (Strong,),
+                {
+                    "_Strong__type": type_,
+                    "_Strong__from_yaml": staticmethod(from_yaml),
+                    "_Strong__to_yaml": staticmethod(to_yaml),
+                    "_Strong__compare_after_cast": compare_after_cast,
+                },
+            )
         return mcls.__types[type_]
 
 
@@ -148,15 +151,18 @@ class Strong(Yamlizable):
             try:
                 new_value = cls.__type(data)  # to coerce to correct type
             except Exception:
-                raise YamlizingError('Failed to coerce data `{}` to type `{}`'
-                                     .format(data, cls.__type))
+                raise YamlizingError(
+                    "Failed to coerce data `{}` to type `{}`".format(data, cls.__type)
+                )
 
             if cls.__compare_after_cast:
                 if new_value != data:
                     # common case for Attribute(type=str, default=None) ... str(None) != 'None'
                     raise YamlizingError(
-                        'Coerced `{}` to `{}`, but the new value `{}` is not equal to old `{}`.'
-                        .format(type(data), type(new_value), new_value, data), node)
+                        "Coerced `{}` to `{}`, but the new value `{}` is not equal to old `{}`."
+                        .format(type(data), type(new_value), new_value, data),
+                        node,
+                    )
 
             data = new_value
 
@@ -165,12 +171,15 @@ class Strong(Yamlizable):
 
     @classmethod
     def to_yaml(cls, dumper, data, round_trip_data):
-        if not isinstance(data, cls.__type):
+        if not isinstance(data, cls.__type) or (
+            cls.__type in (int, float, bool) and cls.__type != type(data)
+        ):
             try:
                 new_value = cls.__type(data)  # to coerce to correct type
             except Exception:
-                raise YamlizingError('Failed to coerce data `{}` to type `{}`'
-                                     .format(data, cls))
+                raise YamlizingError(
+                    "Failed to coerce data `{}` to type `{}`".format(data, cls)
+                )
 
             if cls.__compare_after_cast:
                 try:
@@ -182,11 +191,12 @@ class Strong(Yamlizable):
         if cls.__to_yaml is not None:
             node = cls.__to_yaml.__call__(dumper, data, round_trip_data)
         else:
-            node = dumper.represent_data(data if cls.__to_yaml is None else cls.__to_yaml(data))
+            node = dumper.represent_data(
+                data if cls.__to_yaml is None else cls.__to_yaml(data)
+            )
 
         round_trip_data[data].apply(node)
         return node
 
 
 Dynamic = Typed(object)
-
