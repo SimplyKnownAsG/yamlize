@@ -8,7 +8,7 @@ setup(
     # https://packaging.python.org/en/latest/single_source_version.html
     version='0.7.0',
 
-    description='yamlize, a package for Python object serialization and data validaiton.',
+    description='yamlize, a package for Python object serialization and data validation.',
     long_description='see https://github.com/SimplyKnownAsG/yamlize/blob/master/README.rst',
 
     # The project's main homepage.
