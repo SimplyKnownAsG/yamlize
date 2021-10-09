@@ -3,8 +3,6 @@ import re
 import pickle
 import copy
 
-import six
-
 from yamlize import Object
 from yamlize import YamlizingError
 from yamlize import Attribute

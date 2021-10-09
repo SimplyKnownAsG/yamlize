@@ -1,6 +1,5 @@
 import inspect
 
-import six
 import ruamel.yaml
 
 from .yamlizable import Yamlizable
@@ -107,7 +106,7 @@ class ObjectType(type):
             cls.attributes.add(value)
 
 
-class Object(six.with_metaclass(ObjectType, Yamlizable)):
+class Object(Yamlizable, metaclass=ObjectType):
 
     __slots__ = ('__round_trip_data',)
 

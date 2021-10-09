@@ -1,7 +1,5 @@
 import ruamel.yaml
 
-from six.moves import zip
-
 from .round_trip_data import RoundTripData
 from .yamlizable import Yamlizable, Dynamic, Typed
 from .yamlizing_error import YamlizingError

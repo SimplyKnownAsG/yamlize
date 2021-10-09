@@ -3,7 +3,6 @@ import pickle
 import copy
 
 import sys
-import six
 
 from yamlize import Attribute, IntList, StrList, Sequence, Object, YamlizingError
 

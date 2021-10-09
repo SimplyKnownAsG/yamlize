@@ -1,6 +1,6 @@
 import ruamel.yaml
-import six
 import inspect
+import io
 
 from yamlize.round_trip_data import RoundTripData
 from yamlize.yamlizing_error import YamlizingError
@@ -59,7 +59,7 @@ class Yamlizable(object):
         # can't use ruamel.yaml.load because I need a Resolver/loader for
         # resolving non-string types
         convert_to_yaml = stream is None
-        stream = stream or six.StringIO()
+        stream = stream or io.StringIO()
         dumper = Dumper(stream)
 
         try:

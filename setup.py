@@ -54,7 +54,7 @@ setup(
     #   py_modules=["my_module"],
 
     # List run-time dependencies here.
-    install_requires=['ruamel.yaml', 'six'],
+    install_requires=['ruamel.yaml'],
 
     # List additional groups of dependencies here (e.g. development dependencies)
     extras_require={

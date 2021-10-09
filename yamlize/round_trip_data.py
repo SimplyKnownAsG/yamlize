@@ -12,7 +12,7 @@ class _AnchorNode(object):
 class RoundTripData(object):
 
     __slots__ = ('_rtd', '_kids_rtd', '_name_order', '_merge_parents',
-                 '_complete_inheritance')  # can't use private variables with six
+                 '_complete_inheritance')  # couldn't use private variables with six
 
     def __init__(self, node):
         self._rtd = {}

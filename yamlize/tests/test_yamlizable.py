@@ -3,7 +3,7 @@ import pickle
 import copy
 
 import sys
-import six
+import io
 
 from yamlize import Object
 from yamlize import YamlizingError
@@ -44,11 +44,11 @@ AnimalWithFriend.friend = Attribute(name='friend',
 class Test_from_yaml(unittest.TestCase):
 
     def test_bad_type(self):
-        stream = six.StringIO('[this, is a list]')
+        stream = io.StringIO('[this, is a list]')
         with self.assertRaises(YamlizingError):
             Animal.load(stream)
 
-        stream = six.StringIO('this is a scalar')
+        stream = io.StringIO('this is a scalar')
         with self.assertRaises(YamlizingError):
             Animal.load(stream)
 
@@ -70,23 +70,23 @@ class Test_from_yaml(unittest.TestCase):
             Animal.load(stream)
 
     def test_TypeCheck_good(self):
-        stream = six.StringIO('one: 1\narray: [a, bc]')
+        stream = io.StringIO('one: 1\narray: [a, bc]')
         tc = TypeCheck.load(stream)
         self.assertEqual(1, tc.one)
         self.assertEqual('a bc'.split(), tc.array)
 
     def test_TypeCheck_bad(self):
         tc = TypeCheck(1, [])
-        stream = six.StringIO('one: 1\narray: 99')
+        stream = io.StringIO('one: 1\narray: 99')
         with self.assertRaises(YamlizingError):
             tc = TypeCheck.load(stream)
 
-        stream = six.StringIO('one: a\narray: []')
+        stream = io.StringIO('one: a\narray: []')
         with self.assertRaises(YamlizingError):
             TypeCheck.load(stream)
 
     def test_typeCheck_badArray(self):
-        stream = six.StringIO('one: 1\narray: this gets converted to a list')
+        stream = io.StringIO('one: 1\narray: this gets converted to a list')
         with self.assertRaises(YamlizingError):
             TypeCheck.load(stream)
 

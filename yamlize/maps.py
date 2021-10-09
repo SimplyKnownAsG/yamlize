@@ -1,4 +1,3 @@
-import six
 import ruamel.yaml
 
 from collections import OrderedDict
@@ -40,7 +39,7 @@ class MapType(ObjectType):
         return ObjectType.__init__(cls, name, bases, data)
 
 
-class __MapBase(six.with_metaclass(MapType, Object)):
+class __MapBase(Object, metaclass=MapType):
     """
     __MapBase is a wrapper around and OrderedDict.
 
