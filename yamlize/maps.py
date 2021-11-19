@@ -53,8 +53,8 @@ class __MapBase(Object, metaclass=MapType):
         """
         Explicit implementation of __new__ to assign __data as an attribute.
 
-        :param *args: sequence of key/value pairs.
-        :param **kwargs: kwargs for input to OrderedDict.
+        :param ``*args``: sequence of key/value pairs.
+        :param ``**kwargs``: kwargs for input to OrderedDict.
         """
         self = Object.__new__(cls)
         self.__data = OrderedDict()
@@ -64,8 +64,8 @@ class __MapBase(Object, metaclass=MapType):
         """
         Initialize a Map.
 
-        :param *args: sequence of key/value pairs.
-        :param **kwargs: kwargs for input to OrderedDict.
+        :param ``*args``: sequence of key/value pairs.
+        :param ``**kwargs``: kwargs for input to OrderedDict.
         """
         Object.__init__(self)
         self.__data = OrderedDict(*args, **kwargs)
